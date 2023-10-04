@@ -161,7 +161,7 @@ def check_in_database(ip, hwid, steam64):
             )
         if entry["steam64"] == steam64:
             results["steam"].append(
-                (get_ban_status(entry, current_time)) + f" [{entry['steam']}]"
+                (get_ban_status(entry, current_time)) + f" [{entry['steam64']}]"
             )
 
     return results

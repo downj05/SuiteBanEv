@@ -4,7 +4,7 @@
 set "CURRENT_DIR=%CD%"
 
 :: Change the directory to where main.py is located
-cd /d "SuitBanEv"
+cd /d "SuiteBanEv-main"
 
 :: Activate the virtual environment
 call "venv\Scripts\activate"
