@@ -1,7 +1,4 @@
-REM Create a venv and install the requirements
-REM
-REM Usage: install.bat
-REM
+@echo off
 python -m venv venv
 venv\Scripts\pip install -r requirements.txt
 echo "done"

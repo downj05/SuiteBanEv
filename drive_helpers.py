@@ -1,23 +1,25 @@
 import winreg
 import os
 import vdf
+from typing import Optional
 
 UNTURNED_APP_ID = 304930
 
 
-def set_registry_value(key_path, value_name, value):
+def set_registry_value(key, key_path, value_name, value) -> bool:
     try:
-        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
+        key = winreg.CreateKey(key, key_path)
         winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, value)
         winreg.CloseKey(key)
-        print(f"Successfully set {value_name} to {value}")
+        return True
     except Exception as e:
         print(f"Error setting {value_name}: {str(e)}")
+        return False
 
 
-def get_registry_value(key_path, value_name):
+def get_registry_value(key, key_path, value_name) -> Optional[str]:
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+        key = winreg.OpenKey(key, key_path)
         value, _ = winreg.QueryValueEx(key, value_name)
         winreg.CloseKey(key)
         return value
@@ -26,10 +28,10 @@ def get_registry_value(key_path, value_name):
         return None
 
 
-def get_steam_path():
-    key_path = "SOFTWARE\Valve\Steam"
+def get_steam_path() -> Optional[str]:
+    key_path = r"SOFTWARE\Valve\Steam"
     value_name = "SteamPath"
-    return get_registry_value(key_path, value_name)
+    return get_registry_value(winreg.HKEY_CURRENT_USER, key_path, value_name)
 
 
 def get_steam_drive():
@@ -43,12 +45,23 @@ def get_steam_library():
     return libraries
 
 
-def get_unturned_drive() -> str:
+def get_unturned_library():
     libraries = get_steam_library()
     for key, value in libraries.items():
         path = value["path"]
         for app in value["apps"]:
             if app == str(UNTURNED_APP_ID):
-                return path.split(":")[0].upper()
+                return path
     print("Error: Unturned not found in Steam libraries")
-    return None
+
+
+def get_unturned_path() -> str:
+    return os.path.join(get_unturned_library(), "steamapps", "common", "Unturned")
+
+
+def get_unturned_drive() -> Optional[str]:
+    return get_unturned_library().split(":")[0].upper()
+
+
+if __name__ == "__main__":
+    print(get_unturned_path())
