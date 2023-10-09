@@ -1,6 +1,9 @@
 # Ban Database
 db.json
 
+# Version cache
+version.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -7,9 +7,16 @@ import time
 import sys
 from colorama import init, Fore, Back, Style
 from datetime import datetime as dt
+import human_readable as hr
 import poison
 import ctypes
 import kill_bind
+from update import (
+    compare_versions,
+    update_script,
+    get_current_version_info,
+    get_latest_version_info,
+)
 import print_helpers
 
 DATABASE_FILE = "db.json"
@@ -59,6 +66,11 @@ def ts_to_str(ts):
     if isinstance(ts, str):
         ts = int(ts)
     return dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def date_str_to_time_ago(date_str):
+    # Takes in a date like '2023-10-09T11:12:32Z' and uses human_readable to convert it to a time ago string
+    return hr.date_time(dt.now() - dt.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ"))
 
 
 def get_ban_status(entry, current_time):
@@ -229,13 +241,49 @@ if __name__ == "__main__":
     type_print("Made by: ", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
     type_print("W32", delay=0.01, color=Fore.CYAN, style=Style.BRIGHT)
     type_print("\tVersion: ", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
-    type_print("2.0\n", delay=0.01, color=Fore.RED, style=Style.DIM)
+    # type_print("2.0\n", delay=0.01, color=Fore.RED, style=Style.DIM)
+    current_version = get_current_version_info()
+    if current_version is None:
+        type_print("Unknown", delay=0.01, color=Fore.RED, style=Style.DIM)
+    else:
+        try:
+            update_info = get_latest_version_info()
+
+            # If outdated
+            if compare_versions(update_info):
+                type_print(
+                    current_version[0][:7],
+                    delay=0.01,
+                    color=Fore.YELLOW,
+                    style=Style.DIM,
+                )
+                print(
+                    Fore.LIGHTGREEN_EX
+                    + f" - New Update {date_str_to_time_ago(update_info[2])} "
+                    + Fore.LIGHTCYAN_EX
+                    + f"'{update_info[1]}'  [{update_info[0][:7]}]"
+                    + Style.RESET_ALL
+                )
+
+            # If up to date
+            else:
+                type_print(
+                    current_version[0][:7],
+                    delay=0.01,
+                    color=Fore.GREEN,
+                    style=Style.DIM,
+                )
+                print(Fore.LIGHTGREEN_EX + " - Up to date!" + Style.RESET_ALL)
+        except:
+            print(Fore.RED + "Failed to fetch latest version info")
+
     if not is_admin():
         print(
             Fore.RED
             + "Warning: You are not running this program as administrator. You will not be able to spoof HWID."
             + Style.RESET_ALL
         )
+
     type_print("Options:\n", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
     ch("check", "check if you are banned")
     ch("spoof", "randomize your hwid")
@@ -246,6 +294,7 @@ if __name__ == "__main__":
         "return all the poisoned playernames on an unturned server",
     )
     ch("bind <key>", "toggle a bind key to kill unturned, <key> is f11 by default")
+    ch("update", "update the program")
     ch("quit", "exit the program")
 
     while True:
@@ -274,6 +323,10 @@ if __name__ == "__main__":
                         print(
                             Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}"
                         )
+
+            elif c == "update":
+                update_script()
+
             elif c == "quit":
                 break
             else:
