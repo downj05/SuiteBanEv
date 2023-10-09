@@ -8,29 +8,13 @@ import sys
 from colorama import init, Fore, Back, Style
 from datetime import datetime as dt
 import poison
-import ctypes, os
+import ctypes
+import kill_bind
+import print_helpers
 
 DATABASE_FILE = "db.json"
 
 init(autoreset=True)
-
-
-class print_helpers:
-    @staticmethod
-    def _header(text, background=Back.BLUE, foreground=Fore.BLACK):
-        print(background + foreground + Style.NORMAL + text)
-
-    @staticmethod
-    def h1(text):
-        print_helpers._header(text, Back.WHITE, Fore.BLACK)
-
-    @staticmethod
-    def h2(text):
-        print_helpers._header(text, Back.LIGHTCYAN_EX, Fore.BLACK)
-
-    @staticmethod
-    def s(text):
-        return Style.BRIGHT + Fore.CYAN + text + Style.RESET_ALL
 
 
 def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
@@ -261,10 +245,11 @@ if __name__ == "__main__":
         "poison -s <address:port>",
         "return all the poisoned playernames on an unturned server",
     )
+    ch("bind <key>", "toggle a bind key to kill unturned, <key> is f11 by default")
     ch("quit", "exit the program")
 
     while True:
-        i = input(Style.DIM + ">" + Style.RESET_ALL).strip().split(" ")
+        i = input(print_helpers.CLI_CHAR).strip().split(" ")
         c = i[0].lower()
         try:
             if c == "check":
@@ -279,6 +264,16 @@ if __name__ == "__main__":
                     poison.poison_server((address, int(port)))
                 else:
                     [print(poison.convert_name(i)) for i in i[1:]]
+            elif c == "bind":
+                if len(i) < 2:
+                    kill_bind.toggle_bind("f11")
+                else:
+                    try:
+                        kill_bind.toggle_bind(i[1])
+                    except Exception as e:
+                        print(
+                            Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}"
+                        )
             elif c == "quit":
                 break
             else:
