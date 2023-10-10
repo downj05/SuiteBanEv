@@ -26,7 +26,7 @@ def get_latest_version_info() -> tuple:
         json_r = json.loads(response.content)
         return (
             json_r["sha"],
-            json_r["commit"]["message"],
+            json_r["commit"].get("message", "No update notes"),
             json_r["commit"]["author"]["date"],
         )
     else:

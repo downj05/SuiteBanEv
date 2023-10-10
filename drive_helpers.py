@@ -35,7 +35,13 @@ def get_steam_path() -> Optional[str]:
 
 
 def get_steam_drive():
-    return get_steam_path().split(":")[0].upper()
+    steam_path = get_steam_path()
+    if steam_path is None:
+        print("Error: Steam not found in registry")
+        print("This likely means Steam is not installed on this machine, which is required to run this program!")
+        exit(1)
+    else:
+        return steam_path.split(":")[0].upper()
 
 
 def get_steam_library():
