@@ -238,6 +238,8 @@ if __name__ == "__main__":
     for line in s.splitlines():
         print(Fore.RED + line)
         time.sleep(0.05)
+    print(f"{Fore.RED}            Smuggler {Fore.WHITE}{Style.BRIGHT}Suite")
+    print(Fore.RED + ("-" * len(s.splitlines()[-1])))
     type_print("Made by: ", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
     type_print("W32", delay=0.01, color=Fore.CYAN, style=Style.BRIGHT)
     type_print("\tVersion: ", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
