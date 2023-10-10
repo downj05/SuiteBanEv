@@ -76,14 +76,20 @@ def download_and_extract_latest_version(destination_folder):
 # Function to preserve user settings and ignore files
 def preserve_user_settings(destination_folder):
     # Copy user settings, secret files, config files, etc., from the old folder to the new folder
-
-    # Database file
-    print("Copying database file...")
-    shutil.copy2(
-        os.path.join(os.path.dirname(__file__), "db.json"),
-        os.path.join(destination_folder, "db.json"),
-    )
-
+    try:
+        current_folder = os.path.abspath(os.path.dirname(__file__))
+        db_path = os.path.join(current_folder, "db.json")
+        if not os.path.isfile(db_path):
+            print("No database file found, skipping...")
+            return
+        # Database file
+        print("Copying database file...")
+        shutil.copy2(
+            db_path,
+            os.path.join(destination_folder, "db.json"),
+        )
+    except Exception as e:
+        print(f"Failed to preserve user settings: {str(e)}")
 
 # Function used with copytree() to get verbose output
 def verbose_copy(source, target):
@@ -94,16 +100,19 @@ def verbose_copy(source, target):
 # Function to replace the current script folder with the updated version
 def replace_current_folder(destination_folder, current_folder):
     # Move the contents of the new folder to the current folder
-    for item in os.listdir(destination_folder):
-        source = os.path.join(destination_folder, item)
-        target = os.path.join(current_folder, item)
-        if os.path.isdir(source):
-            shutil.copytree(
-                source, target, dirs_exist_ok=True, copy_function=verbose_copy
-            )
-        else:
-            shutil.copy2(source, target)
-
+    try:
+        for item in os.listdir(destination_folder):
+            source = os.path.join(destination_folder, item)
+            target = os.path.join(current_folder, item)
+            if os.path.isdir(source):
+                shutil.copytree(
+                    source, target, dirs_exist_ok=True, copy_function=verbose_copy
+                )
+            else:
+                shutil.copy2(source, target)
+    except Exception as e:
+        print(f"Failed to replace current folder: {str(e)}")
+        exit(1)
 
 # Main function to perform the update process
 def update_script():
