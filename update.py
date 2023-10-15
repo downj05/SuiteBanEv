@@ -91,6 +91,7 @@ def preserve_user_settings(destination_folder):
     except Exception as e:
         print(f"Failed to preserve user settings: {str(e)}")
 
+
 # Function used with copytree() to get verbose output
 def verbose_copy(source, target):
     print(f"Copying {source} to {target}")
@@ -100,19 +101,41 @@ def verbose_copy(source, target):
 # Function to replace the current script folder with the updated version
 def replace_current_folder(destination_folder, current_folder):
     # Move the contents of the new folder to the current folder
+    print(f"Replacing current folder from {destination_folder} to {current_folder}...")
     try:
+        # Contents we need to move will be in the first subfolder of the destination folder
+        # This is because the ZIP file contains a parent folder with the repo name
+
+        # Verify that the destination folder contains only one subfolder
+        print("Verifying destination folder...")
+        subfolders = [
+            item
+            for item in os.listdir(destination_folder)
+            if os.path.isdir(os.path.join(destination_folder, item))
+        ]
+        print(f"Found {len(subfolders)} subfolders")
+        if len(subfolders) != 1:
+            raise Exception(
+                f"Expected only one subfolder in the destination folder, found {len(subfolders)}"
+            )
+        print(f'Using subfolder "{subfolders[0]}"')
+        destination_folder = os.path.join(destination_folder, subfolders[0])
+
         for item in os.listdir(destination_folder):
             source = os.path.join(destination_folder, item)
             target = os.path.join(current_folder, item)
             if os.path.isdir(source):
+                print(f'Copying directory "{source}" to "{target}"')
                 shutil.copytree(
                     source, target, dirs_exist_ok=True, copy_function=verbose_copy
                 )
             else:
+                print(f'Copying file "{source}" to "{target}"')
                 shutil.copy2(source, target)
     except Exception as e:
         print(f"Failed to replace current folder: {str(e)}")
         exit(1)
+
 
 # Main function to perform the update process
 def update_script():
@@ -146,7 +169,8 @@ def update_script():
         set_latest_version_info()
 
         # Clean up
-        print("Cleaning up...")
+        print(f"Cleaning up...")
+        print(f"Deleting {destination_folder}...")
         shutil.rmtree(destination_folder)
 
         print("Update successful.")
