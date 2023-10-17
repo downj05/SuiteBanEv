@@ -15,4 +15,3 @@ call "%VENV_DIR%\Scripts\activate"
 
 REM Run main.py from the current directory
 "%PYTHON_EXECUTABLE%" main.py
-pause

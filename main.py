@@ -22,15 +22,16 @@ from update import (
 import print_helpers
 
 
-
 init(autoreset=True)
 current_version = get_current_version_info()
+
 
 def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
     for char in text:
         sys.stdout.write(f"{color}{style}{char}{Style.RESET_ALL}")
         sys.stdout.flush()
         time.sleep(delay)
+
 
 def new_ban():
     ip = get_public_ip()
@@ -43,6 +44,7 @@ def new_ban():
             break
         except ValueError as e:
             print(f"Invalid duration: {str(e)}")
+
 
 def parse_duration(duration_str):
     if duration_str.lower() == "perm":
@@ -127,6 +129,7 @@ def spoof():
 def ch(name, desc):
     print(f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}{name}{Fore.BLACK} - {desc}")
 
+
 def version_string() -> str:
     if current_version is None:
         return f"{Fore.RED}{Style.DIM}Unknown"
@@ -136,47 +139,45 @@ def version_string() -> str:
 
             # If outdated
             if compare_versions(update_info):
-                return f"{Fore.YELLOW}{Style.DIM}{current_version[0][:7]}" + \
-                f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New Update {date_str_to_time_ago(update_info[2])} {Fore.LIGHTCYAN_EX} '{update_info[1]}' [{update_info[0][:7]}]"
+                return [
+                    f"{Fore.YELLOW}{Style.DIM}{current_version[0][:7]}"
+                    + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New Update {date_str_to_time_ago(update_info[2])}",
+                    f"{Fore.LIGHTCYAN_EX}'{update_info[1]}' [{update_info[0][:7]}]",
+                ]
 
             # If up to date
             else:
-                type_print(
-                    current_version[0][:7],
-                    delay=0.01,
-                    color=Fore.GREEN,
-                    style=Style.DIM,
-                )
-                print(Fore.LIGHTGREEN_EX + " - Up to date!" + Style.RESET_ALL)
                 return f"{Fore.GREEN}{Style.DIM}{current_version[0][:7]}{Fore.LIGHTGREEN_EX}{Style.NORMAL} - Up to date!"
         except:
-            return(Fore.RED + "Failed to fetch latest version info")
+            return Fore.RED + "Failed to fetch latest version info"
 
 
 if __name__ == "__main__":
     with open("banner.txt", "r", encoding="utf-8") as f:
-        logo = Fore.RED+f.read()
-    
+        logo = Fore.RED + f.read()
+
     name = f"{Fore.RED}Smuggler{Fore.WHITE}Suite"
     name_len = 0
     for c in name:
         if c.isalpha():
             name_len += 1
 
-    headers = [
-        (name,),
-        ('-'*name_len,),
-        (f"Made By", f"{Fore.RED}W32"),
-        ("Version", version_string())
-    ]
+    version_str = version_string()
+
+    headers = [(name,), ("-" * name_len,), (f"Made By", f"{Fore.RED}W32")]
+
+    if isinstance(version_str, list):
+        headers.append(("Version", version_str[0]))
+        headers.append(("New Changes", version_str[1]))
+    else:
+        headers.append(("Version", version_str))
 
     spoofing = f"{Fore.GREEN}{Style.BRIGHT}Enabled!"
     if not is_admin():
         spoofing = f"{Fore.RED}{Style.DIM}Disabled! - Please run as Administrator"
-    headers.append(("HWID Spoofing", spoofing))    
+    headers.append(("HWID Spoofing", spoofing))
 
     print_helpers.print_logo_with_info(logo, headers)
-    quit(0)
     type_print("Options:\n", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
     ch("check", "check if you are banned")
     ch("spoof", "randomize your hwid")
