@@ -5,6 +5,7 @@ import hashlib
 import uuid
 import winreg
 import json
+from colorama import Fore, Back, Style
 from typing import Optional, Union
 
 # Salt Unturned uses for HWID
@@ -96,6 +97,32 @@ def get_hwid() -> list:
     hwid_array.append(get_convenient_save_data())
     return hwid_array
 
+
+def randomize_hwid() -> None:
+    if random_set_convenient_save_data():
+        print(
+            Fore.LIGHTGREEN_EX
+            + f"Successfully spoofed convenient save data! {Fore.MAGENTA}[{get_convenient_save_data()}]"
+            + Style.RESET_ALL
+        )
+    else:
+        print(Fore.RED + "Failed to spoof convenient save data!" + Style.RESET_ALL)
+    if random_set_player_prefs():
+        print(
+            Fore.LIGHTGREEN_EX
+            + f"Successfully spoofed player prefs! {Fore.MAGENTA}[{get_player_prefs()}]"
+            + Style.RESET_ALL
+        )
+    else:
+        print(Fore.RED + "Failed to spoof player prefs!" + Style.RESET_ALL)
+    if random_set_windows_guid():
+        print(
+            Fore.LIGHTGREEN_EX
+            + f"Successfully spoofed windows guid! {Fore.MAGENTA}[{get_windows_guid()}]"
+            + Style.RESET_ALL
+        )
+    else:
+        print(Fore.RED + "Failed to spoof windows guid!" + Style.RESET_ALL)
 
 def random_sha1():
     return hashlib.sha1(uuid.uuid4().bytes)

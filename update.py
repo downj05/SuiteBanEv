@@ -10,6 +10,7 @@ from typing import Optional
 # toggle argument 'update'
 parser = argparse.ArgumentParser()
 parser.add_argument("--set", help="set the latest version info", action="store_true")
+parser.add_argument("--update", help="force an update", action="store_true")
 args = parser.parse_args()
 
 
@@ -118,7 +119,9 @@ def replace_current_folder(destination_folder, current_folder):
 def update_script():
     if not compare_versions():
         print("No updates available.")
-        return
+        i = input("Force update? (y/n): ")
+        if i.lower() != "y":
+            return
     current_folder = os.path.abspath(os.path.dirname(__file__))
     destination_folder = os.path.join(current_folder, "temp_new_version")
 
@@ -158,4 +161,7 @@ def update_script():
 if __name__ == "__main__":
     if args.set:
         set_latest_version_info()
+        exit(0)
+    if args.update:
+        update_script()
         exit(0)

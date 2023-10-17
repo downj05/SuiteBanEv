@@ -4,11 +4,14 @@ import winreg
 import time
 import drive_helpers
 
-DRIVE_LETTER = drive_helpers.get_steam_drive()
+DRIVE_LETTER = None
 
 def get_steam_logins_by_modified():
     # Get the steamid3's of all the previously logged in Steam users on this machine
     # Sorts them by modification date
+    global DRIVE_LETTER
+    if DRIVE_LETTER == None:
+        DRIVE_LETTER = drive_helpers.get_steam_drive()
     dir_path = rf'{DRIVE_LETTER}:\Program Files (x86)\Steam\userdata' 
     files = os.listdir(dir_path)
     files_with_mtime = [(f, os.stat(os.path.join(dir_path, f)).st_mtime) for f in files]
