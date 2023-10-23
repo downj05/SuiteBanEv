@@ -12,7 +12,7 @@ import human_readable as hr
 import poison
 import ctypes
 import kill_bind
-from db import add_to_database, check_in_database
+from db import update_database, add_ban_to_database, check_ban_in_database, Server
 from update import (
     compare_versions,
     update_script,
@@ -32,19 +32,6 @@ def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
         sys.stdout.write(f"{color}{style}{char}{Style.RESET_ALL}")
         sys.stdout.flush()
         time.sleep(delay)
-
-
-def new_ban():
-    ip = get_public_ip()
-    hwid = get_hwid()
-    steam64 = get_latest_user_steam64()
-    while True:
-        i = input("Duration (e.g. 1d, 1w, 1M, 1y, perm): ")
-        try:
-            duration = parse_duration(i)
-            break
-        except ValueError as e:
-            print(f"Invalid duration: {str(e)}")
 
 
 def parse_duration(duration_str):
@@ -98,7 +85,7 @@ def new_ban():
             print(f"Invalid duration: {str(e)}")
 
     time_added = int(time.time())
-    add_to_database(ip, hwid, steam64, duration, time_added)
+    add_ban_to_database(ip, hwid, steam64, duration, time_added)
 
 
 def check():
@@ -106,13 +93,15 @@ def check():
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
 
-    ban_results = check_in_database(ip, hwid, steam64)
+    ban_results = check_ban_in_database(ip, hwid, steam64)
 
-    print(Style.DIM + "checking status...")
     for field, status in ban_results.items():
-        print_helpers.h2(field)
-        for entry in status:
-            print(" - " + entry)
+        print_helpers.h1(field)
+        for i, entry in enumerate(status):
+            if i == len(status) - 1:
+                print("└─ " + entry)
+            else:
+                print("├─ " + entry)
 
 
 def spoof():
@@ -129,8 +118,8 @@ def spoof():
 
 def poison_server(*args):
     if args[0] == "-s":
-        address, port = args[1].split(":")
-        poison.poison_server((address, int(port)))
+        address = Server.server_handler(args[1], tuple=True)
+        poison.poison_server(address)
     else:
         [print(poison.convert_name(" ".join(args)))]
 
@@ -140,10 +129,6 @@ def bind_kill(key="f11"):
         kill_bind.toggle_bind(key)
     except Exception as e:
         print(Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}")
-
-
-def ch(name, desc):
-    print(f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}{name}{Fore.BLACK} - {desc}")
 
 
 def version_string() -> str:
@@ -169,6 +154,9 @@ def version_string() -> str:
 
 
 if __name__ == "__main__":
+    # update database
+    update_database()
+
     # init commands
     handler = cmd.CommandHandler()
     handler.register(
@@ -201,11 +189,20 @@ if __name__ == "__main__":
             usage="bind <key>",
         )
     )
+
+    handler.register(
+        command=cmd.Command(
+            "server",
+            Server.server,
+            help="use an alias for a servers details, compatible with all commands that take an address:port",
+            usage="server add/remove/list\n\nserver add <name> <address:port>\nserver remove <name>\nserver list",
+        )
+    )
+
     handler.register(
         command=cmd.Command("update", update_script, help="update the program")
     )
     handler.register(command=cmd.Command("quit", exit, help="exit the program"))
-
 
     with open("banner.txt", "r", encoding="utf-8") as f:
         logo = Fore.RED + f.read()

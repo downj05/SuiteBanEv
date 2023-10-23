@@ -88,7 +88,7 @@ def convert_name(name):
     return new_name
 
 
-def poison_server(address):
+def poison_server(address: tuple):
     for p in a2s.players(address):
         name = p.name.strip()
         print(convert_name(name))
