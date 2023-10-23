@@ -20,6 +20,7 @@ from update import (
     get_latest_version_info,
 )
 import print_helpers
+import command as cmd
 
 
 init(autoreset=True)
@@ -126,6 +127,21 @@ def spoof():
         print("Cancelled.")
 
 
+def poison_server(*args):
+    if args[0] == "-s":
+        address, port = args[1].split(":")
+        poison.poison_server((address, int(port)))
+    else:
+        [print(poison.convert_name(" ".join(args)))]
+
+
+def bind_kill(key="f11"):
+    try:
+        kill_bind.toggle_bind(key)
+    except Exception as e:
+        print(Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}")
+
+
 def ch(name, desc):
     print(f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}{name}{Fore.BLACK} - {desc}")
 
@@ -178,52 +194,42 @@ if __name__ == "__main__":
     headers.append(("HWID Spoofing", spoofing))
 
     print_helpers.print_logo_with_info(logo, headers)
-    type_print("Options:\n", delay=0.01, color=Fore.BLACK, style=Style.BRIGHT)
-    ch("check", "check if you are banned")
-    ch("spoof", "randomize your hwid")
-    ch("new", "record a new ban")
-    ch("poison <text>", "poison text with russian characters with ")
-    ch(
-        "poison -s <address:port>",
-        "return all the poisoned playernames on an unturned server",
+    handler = cmd.CommandHandler()
+    handler.register(
+        command=cmd.Command(
+            "check", check, help="check if your ip/hwid/steam64 are in a logged ban"
+        )
     )
-    ch("bind <key>", "toggle a bind key to kill unturned, <key> is f11 by default")
-    ch("update", "update the program")
-    ch("quit", "exit the program")
+    handler.register(command=cmd.Command("spoof", spoof, help="randomize your hwid"))
+    handler.register(
+        command=cmd.Command(
+            "new",
+            new_ban,
+            help="record a new ban, length will be prompted upon running",
+            usage="new",
+        )
+    )
+    handler.register(
+        command=cmd.Command(
+            "poison",
+            poison_server,
+            help="poison given text with russian characters, can also retrieve poisoned playernames from an unturned server",
+            usage="poison <text> or poison -s <address:port>",
+        )
+    )
+    handler.register(
+        command=cmd.Command(
+            "bind",
+            bind_kill,
+            help="toggle a bind key to kill unturned, <key> is f11 by default",
+            usage="bind <key>",
+        )
+    )
+    handler.register(
+        command=cmd.Command("update", update_script, help="update the program")
+    )
+    handler.register(command=cmd.Command("quit", exit, help="exit the program"))
 
     while True:
-        i = input(print_helpers.CLI_CHAR).strip().split(" ")
-        c = i[0].lower()
-        try:
-            if c == "check":
-                check()
-            elif c == "spoof":
-                spoof()
-            elif c == "new":
-                new_ban()
-            elif c == "poison":
-                if i[1] == "-s":
-                    address, port = i[2].split(":")
-                    poison.poison_server((address, int(port)))
-                else:
-                    [print(poison.convert_name(i)) for i in i[1:]]
-            elif c == "bind":
-                if len(i) < 2:
-                    kill_bind.toggle_bind("f11")
-                else:
-                    try:
-                        kill_bind.toggle_bind(i[1])
-                    except Exception as e:
-                        print(
-                            Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}"
-                        )
-
-            elif c == "update":
-                update_script()
-
-            elif c == "quit":
-                break
-            else:
-                print(Fore.BLACK + Style.BRIGHT + "Invalid command")
-        except Exception as e:
-            print(Fore.RED + Style.BRIGHT + f"Error: {str(e)}")
+        i = input(print_helpers.CLI_CHAR)
+        handler.handleInput(i)
