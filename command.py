@@ -22,17 +22,26 @@ class CommandHandler:
 
     def __init__(self):
         self._commands = {}
+        self.PAGE_SIZE = 5 # page size for help pages
+        self._help_pages = []
         self.register(
             Command(
                 "help",
                 self._help,
-                help="get info about a command",
-                usage="help <command>",
+                help="get info about a command or view a page of commands",
+                usage="help <command>/<page>",
             )
         )
 
     def register(self, command: Command):
         self._commands[command.name] = command
+        # add to page, find a page that has room, or make a new one
+        for page in self._help_pages:
+            if len(page) < self.PAGE_SIZE:
+                page.append(command)
+                return
+        self._help_pages.append([command])
+
 
     def handleInput(self, usr_input: str):
         args = usr_input.strip().split(" ")
@@ -52,12 +61,36 @@ class CommandHandler:
             print(Fore.RED + Style.BRIGHT + f"Error: {str(e)}")
             return False
 
-    def _help(self, cmd_name: str = "help"):
-        cmd = self._commands.get(cmd_name)
+    def _help(self, arg: str = "help"):
+        """
+        Takes in 1 argument, either a command name or a page number
+        If the argument is a command name, show the help for that command
+        If the argument is a page number, show the help for that page
+        If there is no argument, show the help for the help command
+        """
+        # See if the argument is a page number
+        try:
+            page = int(arg)
+            # If the page number is out of range, show an error
+            if page > len(self._help_pages) or page < 1:
+                print(Fore.RED + Style.BRIGHT + f"page does not exist, {len(self._help_pages)} pages available")
+                return
+            # Print the page
+            print(Style.BRIGHT + Fore.LIGHTYELLOW_EX + f"Page {page}/{len(self._help_pages)}")
+            for cmd in self._help_pages[page - 1]:
+                print(f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}{cmd.name}{Fore.BLACK} - {cmd.help}")
+            return
+        except ValueError:
+            pass
+        cmd = self._commands.get(arg)
+
+        # If the command doesn't exist and the user didn't specify a page, give the help for this command
         if not cmd:
             print(Fore.RED + Style.BRIGHT + "command does not exist")
             return
         print(f"{cmd.name.capitalize()}: {cmd.help}")
+
+        # Only print usage if it's not empty
         if cmd.usage not in ("", None):
             print(f"Usage: {cmd.usage}")
         return

@@ -169,31 +169,7 @@ def version_string() -> str:
 
 
 if __name__ == "__main__":
-    with open("banner.txt", "r", encoding="utf-8") as f:
-        logo = Fore.RED + f.read()
-
-    name = f"{Fore.RED}Smuggler{Fore.WHITE}Suite"
-    name_len = 0
-    for c in name:
-        if c.isalpha():
-            name_len += 1
-
-    version_str = version_string()
-
-    headers = [(name,), ("-" * name_len,), (f"Made By", f"{Fore.RED}W32")]
-
-    if isinstance(version_str, list):
-        headers.append(("Version", version_str[0]))
-        headers.append(("New Changes", version_str[1]))
-    else:
-        headers.append(("Version", version_str))
-
-    spoofing = f"{Fore.GREEN}{Style.BRIGHT}Enabled!"
-    if not is_admin():
-        spoofing = f"{Fore.RED}{Style.DIM}Disabled! - Please run as Administrator"
-    headers.append(("HWID Spoofing", spoofing))
-
-    print_helpers.print_logo_with_info(logo, headers)
+    # init commands
     handler = cmd.CommandHandler()
     handler.register(
         command=cmd.Command(
@@ -230,6 +206,34 @@ if __name__ == "__main__":
     )
     handler.register(command=cmd.Command("quit", exit, help="exit the program"))
 
+
+    with open("banner.txt", "r", encoding="utf-8") as f:
+        logo = Fore.RED + f.read()
+
+    name = f"{Fore.RED}Smuggler{Fore.WHITE}Suite"
+    name_len = 0
+    for c in name:
+        if c.isalpha():
+            name_len += 1
+
+    version_str = version_string()
+
+    headers = [(name,), ("-" * name_len,), (f"Made By", f"{Fore.RED}W32")]
+
+    if isinstance(version_str, list):
+        headers.append(("Version", version_str[0]))
+        headers.append(("New Changes", version_str[1]))
+    else:
+        headers.append(("Version", version_str))
+
+    spoofing = f"{Fore.GREEN}{Style.BRIGHT}Enabled!"
+    if not is_admin():
+        spoofing = f"{Fore.RED}{Style.DIM}Disabled! - Please run as Administrator"
+    headers.append(("HWID Spoofing", spoofing))
+    headers.append((f"{len(handler._commands)} commands loaded",))
+    print_helpers.print_logo_with_info(logo, headers)
+
     while True:
         i = input(print_helpers.CLI_CHAR)
+        print(Style.RESET_ALL, end="")
         handler.handleInput(i)
