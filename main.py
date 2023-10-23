@@ -2,7 +2,7 @@ import json
 from hwid2 import get_hwid, randomize_hwid
 from steam_client_accounts import get_latest_user_steam64
 from ip import get_public_ip
-from time_helpers import date_str_to_time_ago, ts_to_str
+from time_helpers import git_time_str_to_time_ago, ts_to_str
 import re
 import time
 import sys
@@ -142,7 +142,7 @@ def version_string() -> str:
             if compare_versions(update_info):
                 return [
                     f"{Fore.YELLOW}{Style.DIM}{current_version[0][:7]}"
-                    + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New Update {date_str_to_time_ago(update_info[2])}",
+                    + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New Update {git_time_str_to_time_ago(update_info[2])}",
                     f"{Fore.LIGHTCYAN_EX}'{update_info[1]}' [{update_info[0][:7]}]",
                 ]
 
