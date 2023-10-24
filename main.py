@@ -12,6 +12,7 @@ import human_readable as hr
 import poison
 import ctypes
 import kill_bind
+import random
 from db import update_database, add_ban_to_database, check_ban_in_database, Server
 from update import (
     compare_versions,
@@ -204,7 +205,7 @@ if __name__ == "__main__":
     )
     handler.register(command=cmd.Command("quit", exit, help="exit the program"))
 
-    with open("banner.txt", "r", encoding="utf-8") as f:
+    with open(random.choice(("banner.txt", "banner2.txt")), "r", encoding="utf-8") as f:
         logo = Fore.RED + f.read()
 
     name = f"{Fore.RED}Smuggler{Fore.WHITE}Suite"
