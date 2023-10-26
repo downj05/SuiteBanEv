@@ -1,6 +1,6 @@
 import json
 from time import time as timestamp
-from time_helpers import ts_to_str
+from time_helpers import ts_to_str, ts_to_str_ago
 from colorama import Fore, Back, Style
 from ip import get_public_ip
 from hwid2 import get_hwid
@@ -83,8 +83,21 @@ def update_database():
             if key not in entry:
                 # prompt user to enter server name if it doesn't exist
                 if key == "server":
-                    entry[key] = input(
-                        f"{Fore.RED}Entry at {entry.get('time_added')} has no server selected\n{Fore.BLACK}{Style.BRIGHT}(Note: The server name you provide will need to be created with the 'server' command for checking to work)\n{Fore.YELLOW}{Style.NORMAL}Please enter a server name: "
+                    prompt = (
+                        f"{Fore.RED}Ban from {ts_to_str_ago(entry.get('time_added'))} is not tied to any server!"
+                        + f"\n{Fore.YELLOW}{Style.NORMAL}You need to provide the NAME/ALIAS of the server that this ban is from. Example: 'unlimited', 'nylex', 'dt'"
+                        f"\n{Fore.BLACK}{Style.BRIGHT}(Note: The server name you provide will need to be added to the server list with the 'server add' command for 'check' to work!)\n"
+                    )
+                    entry[key] = (
+                        input(
+                            prompt
+                            + Fore.GREEN
+                            + Style.BRIGHT
+                            + "Server name: "
+                            + Fore.LIGHTCYAN_EX
+                        )
+                        .strip()
+                        .lower()
                     )
                 else:
                     entry[key] = BAN_ENTRY_SCHEMA[key]
