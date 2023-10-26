@@ -171,7 +171,7 @@ class Server:
             "ip": self.ip,
             "port": self.port,
         }
-        database["servers"][self.name] = entry
+        database["servers"][self.name.lower()] = entry
 
         with open(DATABASE_FILE, "w") as file:
             json.dump(database, file, indent=4)
@@ -181,7 +181,7 @@ class Server:
         with open(DATABASE_FILE, "r") as file:
             database = json.load(file)
 
-        database["servers"].pop(self.name)
+        database["servers"].pop(self.name.lower())
 
         with open(DATABASE_FILE, "w") as file:
             json.dump(database, file, indent=4)
@@ -191,7 +191,7 @@ class Server:
         create_database_if_not_exists()
         with open(DATABASE_FILE, "r") as file:
             database = json.load(file)
-        s = Server._from_database(database["servers"].get(name))
+        s = Server._from_database(database["servers"].get(name.lower()))
         if s is None:
             raise ValueError("Server not found")
         return s
