@@ -15,6 +15,14 @@ def ts_to_str_ago(ts):
     return hr.date_time(dt.now() - dt.fromtimestamp(ts))
 
 
+def duration_to_str(duration: int):
+    # is a length of time in seconds, if its -1 its permanent
+    if duration == -1:
+        return "permanent"
+    else:
+        return hr.time_delta(datetime.timedelta(seconds=duration))
+
+
 def git_time_str_to_time_ago(date_str):
     # Takes in a date like '2023-10-09T11:12:32Z' and uses human_readable to convert it to a time ago string
     # git time seems to always be off by 12 hours, so we add 12 hours to the current time

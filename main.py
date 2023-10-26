@@ -2,7 +2,7 @@ import json
 from hwid2 import get_hwid, randomize_hwid
 from steam_client_accounts import get_latest_user_steam64
 from ip import get_public_ip
-from time_helpers import git_time_str_to_time_ago, ts_to_str
+from time_helpers import git_time_str_to_time_ago, duration_to_str
 import re
 import time
 import sys
@@ -80,12 +80,16 @@ def new_ban(*args):
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
     if len(args) > 0:
-        server_name = Server.from_name(args[0]).name
+        server = Server.from_name(args[0])
+        server_name = server.name
     else:
         assert isinstance(selected_server, Server), "No server selected or provided"
+        server = selected_server
         server_name = selected_server.name
     while True:
-        i = input("Duration (e.g. 1d, 1w, 1M, 1y, perm): ")
+        i = input(
+            f"{Fore.RED}Duration (e.g. 120s, 5m, 8h, 3d, 6w, 2M, 2y, perm): {Fore.YELLOW}"
+        )
         try:
             duration = parse_duration(i)
             break
@@ -100,6 +104,9 @@ def new_ban(*args):
         duration=duration,
         time_added=time_added,
         server=server_name,
+    )
+    print(
+        f"{Fore.GREEN}{Style.BRIGHT}Added ban of length {Fore.MAGENTA}{duration_to_str(duration)}{Fore.GREEN} to database on the server {str(server)}"
     )
 
 
@@ -166,8 +173,8 @@ def select_cmd(*args):
     global selected_server
     if len(args) < 1:
         if selected_server is not None:
-            selected_server = None
             print(f"{Fore.YELLOW}Unselected server {str(selected_server)}")
+            selected_server = None
             return
         else:
             raise Exception("No server provided")
