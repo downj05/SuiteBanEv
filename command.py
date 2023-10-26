@@ -57,14 +57,15 @@ class CommandHandler:
         if not cmd:
             print(Fore.RED + Style.BRIGHT + "invalid command")
             return False
+        HELP_MSG = f"Do 'help {cmd.name}' for more info on this command"
         try:
             cmd.func(*args)
             return True
         except TypeError:
-            print(Fore.RED + Style.BRIGHT + "invalid arguments")
+            print(Fore.RED + Style.BRIGHT + "invalid arguments" + "\n" + HELP_MSG)
             return False
         except Exception as e:
-            print(Fore.RED + Style.BRIGHT + f"Error: {str(e)}")
+            print(Fore.RED + Style.BRIGHT + f"Error: {str(e)}" + "\n" + HELP_MSG)
             return False
 
     def _help(self, arg: str = "help"):

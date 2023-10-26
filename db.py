@@ -10,8 +10,18 @@ from steam_client_accounts import get_latest_user_steam64
 DATABASE_FILE = "db.json"
 DATABASE_SCHEMA = {"data": [], "servers": {}}  # Schema for the database file
 
+# Schema for each ban entry
+BAN_ENTRY_SCHEMA = {
+    "ip": "",
+    "hwid": "",
+    "steam64": "",
+    "duration": 0,
+    "time_added": 0,
+    "server": "",
+}
 
-def check_ban_in_database(ip: str, hwid: list, steam64: str):
+
+def check_ban_in_database(ip: str, hwid: list, steam64: str, server: str = None):
     create_database_if_not_exists()
     with open(DATABASE_FILE, "r") as file:
         database = json.load(file)
@@ -20,6 +30,10 @@ def check_ban_in_database(ip: str, hwid: list, steam64: str):
     results = {"ip": [], "hwid": [], "steam": []}
 
     for entry in database["data"]:
+        # If server is none, check all servers
+        if server is not None:
+            if server not in entry.get("server", ""):
+                continue
         if entry["ip"] == ip:
             results["ip"].append(
                 (get_ban_status(entry, current_time) + f" [{entry['ip']}]")
@@ -37,7 +51,7 @@ def check_ban_in_database(ip: str, hwid: list, steam64: str):
 
     # automatically add no bans msg if there are no bans
     no_ban_status(results["ip"], ip)
-    no_ban_status(results["hwid"], hwid)
+    no_ban_status(results["hwid"], " | ".join([i[:8] for i in hwid]))
     no_ban_status(results["steam"], steam64)
 
     return results
@@ -62,11 +76,24 @@ def update_database():
     for key in DATABASE_SCHEMA.keys():
         if key not in database:
             database[key] = DATABASE_SCHEMA[key]
+
+    # ensure that all entries have the correct schema
+    for entry in database["data"]:
+        for key in BAN_ENTRY_SCHEMA.keys():
+            if key not in entry:
+                # prompt user to enter server name if it doesn't exist
+                if key == "server":
+                    entry[key] = input(
+                        f"{Fore.RED}Entry at {entry.get('time_added')} has no server selected\n{Fore.BLACK}{Style.BRIGHT}(Note: The server name you provide will need to be created with the 'server' command for checking to work)\n{Fore.YELLOW}{Style.NORMAL}Please enter a server name: "
+                    )
+                else:
+                    entry[key] = BAN_ENTRY_SCHEMA[key]
+
     with open(DATABASE_FILE, "w") as file:
         json.dump(database, file, indent=4)
 
 
-def add_ban_to_database(ip, hwid, steam64, duration, time_added=None):
+def add_ban_to_database(ip, hwid, steam64, duration, server, time_added=None):
     create_database_if_not_exists()
     if time_added is None:
         time_added = int(timestamp())  # Default to current time in Unix timestamp
@@ -74,13 +101,14 @@ def add_ban_to_database(ip, hwid, steam64, duration, time_added=None):
     with open(DATABASE_FILE, "r") as file:
         database = json.load(file)
 
-    entry = {
-        "ip": ip,
-        "hwid": hwid,
-        "steam64": steam64,
-        "duration": duration,
-        "time_added": time_added,
-    }
+    entry = BAN_ENTRY_SCHEMA.copy()
+    entry["ip"] = ip
+    entry["hwid"] = hwid
+    entry["steam64"] = steam64
+    entry["duration"] = duration
+    entry["time_added"] = time_added
+    entry["server"] = server
+
     database["data"].append(entry)
 
     with open(DATABASE_FILE, "w") as file:
@@ -89,17 +117,24 @@ def add_ban_to_database(ip, hwid, steam64, duration, time_added=None):
 
 def get_ban_status(entry, current_time):
     time_added = ts_to_str(entry["time_added"])
+    server = f" on {Fore.CYAN}{entry.get('server', 'unknown server')}{Style.RESET_ALL}"
     if entry["duration"] == -1:
-        return Fore.RED + Style.BRIGHT + f"banned permanently at {time_added}"
+        return Fore.RED + Style.BRIGHT + f"banned permanently at {time_added}" + server
     ban_expiry_time = entry["time_added"] + entry["duration"]
     if current_time < ban_expiry_time:
         return (
             Fore.LIGHTRED_EX
             + Style.BRIGHT
             + f"banned at {time_added} for {entry['duration']}"
+            + server
         )
     else:
-        return Fore.YELLOW + Style.DIM + f"expired on {ts_to_str(ban_expiry_time)}"
+        return (
+            Fore.YELLOW
+            + Style.DIM
+            + f"expired on {ts_to_str(ban_expiry_time)}"
+            + server
+        )
 
 
 def no_ban_status(r: list, val):
@@ -187,9 +222,7 @@ class Server:
                     print("No servers in database")
                 else:
                     for server in servers:
-                        print(
-                            f"{Style.BRIGHT}{Fore.CYAN}{server.name}{Fore.BLACK}: {Fore.LIGHTBLUE_EX}{server.ip}:{server.port}"
-                        )
+                        print(str(server))
             else:
                 raise TypeError("Invalid argument")
         except IndexError:
@@ -231,3 +264,6 @@ class Server:
                 return address, int(port)
             else:
                 return text
+
+    def __str__(self):
+        return f"{Style.BRIGHT}{Fore.CYAN}{self.name}{Fore.BLACK}: {Fore.LIGHTBLUE_EX}({self.ip}:{self.port}){Style.RESET_ALL}"

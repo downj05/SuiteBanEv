@@ -26,6 +26,7 @@ import command as cmd
 
 init(autoreset=True)
 current_version = get_current_version_info()
+selected_server = None
 
 
 def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
@@ -73,10 +74,16 @@ def is_admin() -> bool:
         return False
 
 
-def new_ban():
+def new_ban(*args):
+    global selected_server
     ip = get_public_ip()
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
+    if len(args) > 0:
+        server_name = Server.from_name(args[0]).name
+    else:
+        assert isinstance(selected_server, Server), "No server selected or provided"
+        server_name = selected_server.name
     while True:
         i = input("Duration (e.g. 1d, 1w, 1M, 1y, perm): ")
         try:
@@ -86,15 +93,38 @@ def new_ban():
             print(f"Invalid duration: {str(e)}")
 
     time_added = int(time.time())
-    add_ban_to_database(ip, hwid, steam64, duration, time_added)
+    add_ban_to_database(
+        ip=ip,
+        hwid=hwid,
+        steam64=steam64,
+        duration=duration,
+        time_added=time_added,
+        server=server_name,
+    )
 
 
-def check():
+def check(*args):
+    global selected_server
+
     ip = get_public_ip()
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
 
-    ban_results = check_ban_in_database(ip, hwid, steam64)
+    if len(args) == 0:
+        assert isinstance(selected_server, Server), "No server selected or provided"
+        ban_results = check_ban_in_database(
+            ip, hwid, steam64, server=selected_server.name
+        )
+
+    # if at least 1 arg and first arg is all, do all
+    elif args[0] == "all":
+        ban_results = check_ban_in_database(ip, hwid, steam64, server=None)
+
+    # server name is argument
+    elif args[0]:
+        ban_results = check_ban_in_database(
+            ip, hwid, steam64, server=Server.from_name(args[0]).name
+        )
 
     for field, status in ban_results.items():
         print_helpers.h1(field)
@@ -132,6 +162,24 @@ def bind_kill(key="f11"):
         print(Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}")
 
 
+def select_cmd(*args):
+    global selected_server
+    if len(args) < 1:
+        if selected_server is not None:
+            selected_server = None
+            print(f"{Fore.YELLOW}Unselected server {str(selected_server)}")
+            return
+        else:
+            raise Exception("No server provided")
+            return
+
+    server_name = args[0]
+    server = Server.from_name(server_name)
+    selected_server = server
+    print(f"{Fore.GREEN}Selected server {str(server)}")
+    return
+
+
 def version_string() -> str:
     if current_version is None:
         return f"{Fore.RED}{Style.DIM}Unknown"
@@ -162,7 +210,10 @@ if __name__ == "__main__":
     handler = cmd.CommandHandler()
     handler.register(
         command=cmd.Command(
-            "check", check, help="check if your ip/hwid/steam64 are in a logged ban"
+            "check",
+            check,
+            help="check if your ip/hwid/steam64 are in a logged ban on a server\nwill check the currently selected server if no argument is provided",
+            usage="check <server>/all\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck all",
         )
     )
     handler.register(command=cmd.Command("spoof", spoof, help="randomize your hwid"))
@@ -170,8 +221,8 @@ if __name__ == "__main__":
         command=cmd.Command(
             "new",
             new_ban,
-            help="record a new ban, length will be prompted upon running",
-            usage="new",
+            help="record a new ban, length will be prompted upon running, server must be selected or provided",
+            usage="new <server>",
         )
     )
     handler.register(
@@ -203,6 +254,16 @@ if __name__ == "__main__":
     handler.register(
         command=cmd.Command("update", update_script, help="update the program")
     )
+
+    handler.register(
+        command=cmd.Command(
+            "select",
+            select_cmd,
+            help="select a server for use when recording/checking bans",
+            usage="provide a server name to select it\nselect <name>\nleave blank to unselect the current server",
+        )
+    )
+
     handler.register(command=cmd.Command("quit", exit, help="exit the program"))
 
     with open(random.choice(("banner.txt", "banner2.txt")), "r", encoding="utf-8") as f:
@@ -229,6 +290,8 @@ if __name__ == "__main__":
         spoofing = f"{Fore.RED}{Style.DIM}Disabled! - Please run as Administrator"
     headers.append(("HWID Spoofing", spoofing))
     headers.append((f"{len(handler._commands)} commands loaded",))
+    server_count = len(Server.get_all_servers())
+    headers.append((f"{server_count} server{'s' if server_count > 1 else ''} loaded",))
     print_helpers.print_logo_with_info(logo, headers)
 
     while True:
