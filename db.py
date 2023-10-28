@@ -150,6 +150,20 @@ def get_ban_status(entry, current_time):
         )
 
 
+def ban_count_in_database(server: str = None) -> int:
+    create_database_if_not_exists()
+    with open(DATABASE_FILE, "r") as file:
+        database = json.load(file)
+
+    count = 0
+    for entry in database["data"]:
+        if server is not None:
+            if server not in entry.get("server", ""):
+                continue
+        count += 1
+    return count
+
+
 def no_ban_status(r: list, val):
     if len(r) == 0:
         r.append(Fore.LIGHTGREEN_EX + Style.BRIGHT + f"no bans! [{val}]")

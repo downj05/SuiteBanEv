@@ -13,14 +13,20 @@ import poison
 import ctypes
 import kill_bind
 import random
-from db import update_database, add_ban_to_database, check_ban_in_database, Server
+from db import (
+    update_database,
+    add_ban_to_database,
+    check_ban_in_database,
+    ban_count_in_database,
+    Server,
+)
 from update import (
     compare_versions,
     update_script,
     get_current_version_info,
     get_latest_version_info,
 )
-import print_helpers
+import print_helpers as ph
 import command as cmd
 
 
@@ -134,7 +140,7 @@ def check(*args):
         )
 
     for field, status in ban_results.items():
-        print_helpers.h1(field)
+        ph.h1(field)
         for i, entry in enumerate(status):
             if i == len(status) - 1:
                 print("└─ " + entry)
@@ -198,8 +204,8 @@ def version_string() -> str:
             if compare_versions(update_info):
                 return [
                     f"{Fore.YELLOW}{Style.DIM}{current_version[0][:7]}"
-                    + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New Update {git_time_str_to_time_ago(update_info[2])}",
-                    f"{Fore.LIGHTCYAN_EX}'{update_info[1]}' [{update_info[0][:7]}]",
+                    + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New update {git_time_str_to_time_ago(update_info[2])} [{update_info[0][:7]}]",
+                    f"{Fore.LIGHTCYAN_EX}{update_info[1]}",
                 ]
 
             # If up to date
@@ -298,10 +304,19 @@ if __name__ == "__main__":
     headers.append(("HWID Spoofing", spoofing))
     headers.append((f"{len(handler._commands)} commands loaded",))
     server_count = len(Server.get_all_servers())
-    headers.append((f"{server_count} server{'s' if server_count > 1 else ''} loaded",))
-    print_helpers.print_logo_with_info(logo, headers)
+    ban_count = ban_count_in_database()
+
+    headers.append(
+        (
+            (
+                f"{server_count} server{ph.pluralise(server_count)} saved"
+                + f" | {ban_count} ban{ph.pluralise(server_count)} recorded"
+            ),
+        )
+    )
+    ph.print_logo_with_info(logo, headers)
 
     while True:
-        i = input(print_helpers.CLI_CHAR)
+        i = input(ph.CLI_CHAR)
         print(Style.RESET_ALL, end="")
         handler.handleInput(i)

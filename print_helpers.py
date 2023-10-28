@@ -64,6 +64,10 @@ def s(text):
     return Style.BRIGHT + Fore.CYAN + text + Style.RESET_ALL
 
 
+def pluralise(count):
+    return "s" if count != 1 else ""
+
+
 if __name__ == "__main__":
     init()
     print_respect_cli("balls")
