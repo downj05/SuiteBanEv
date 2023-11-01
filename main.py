@@ -13,6 +13,8 @@ import poison
 import ctypes
 import kill_bind
 import random
+from swinger import swinger
+from players import players
 from db import (
     update_database,
     add_ban_to_database,
@@ -89,7 +91,8 @@ def new_ban(*args):
         server = Server.from_name(args[0])
         server_name = server.name
     else:
-        assert isinstance(selected_server, Server), "No server selected or provided"
+        assert isinstance(
+            selected_server, Server), "No server selected or provided"
         server = selected_server
         server_name = selected_server.name
     while True:
@@ -124,7 +127,8 @@ def check(*args):
     steam64 = get_latest_user_steam64()
 
     if len(args) == 0:
-        assert isinstance(selected_server, Server), "No server selected or provided"
+        assert isinstance(
+            selected_server, Server), "No server selected or provided"
         ban_results = check_ban_in_database(
             ip, hwid, steam64, server=selected_server.name
         )
@@ -193,6 +197,18 @@ def select_cmd(*args):
     return
 
 
+def player_list(*args):
+    global selected_server
+
+    if len(args) < 1:
+        assert isinstance(
+            selected_server, Server), "No server selected or provided"
+        server = selected_server.name
+    else:
+        server = args[0]
+    players(server)
+
+
 def version_string() -> str:
     if current_version is None:
         return f"{Fore.RED}{Style.DIM}Unknown"
@@ -229,7 +245,8 @@ if __name__ == "__main__":
             usage="check <server>/all\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck all",
         )
     )
-    handler.register(command=cmd.Command("spoof", spoof, help="randomize your hwid"))
+    handler.register(command=cmd.Command(
+        "spoof", spoof, help="randomize your hwid"))
     handler.register(
         command=cmd.Command(
             "new",
@@ -277,7 +294,26 @@ if __name__ == "__main__":
         )
     )
 
-    handler.register(command=cmd.Command("quit", exit, help="exit the program"))
+    handler.register(
+        command=cmd.Command(
+            "swinger",
+            swinger,
+            help="Automatically swing your weapon via left or right click",
+            usage="swinger -d <delay> -a <action> -c <count>\nDefaults: delay=0.8, action=left (left, l, right, r), count=inf",
+        )
+    )
+
+    handler.register(
+        command=cmd.Command(
+            "players",
+            player_list,
+            help="Prints out a list of players on a server",
+            usage="players <server>/<none (selected server)>",
+        )
+    )
+
+    handler.register(command=cmd.Command(
+        "quit", exit, help="exit the program"))
 
     with open(random.choice(("banner.txt", "banner2.txt")), "r", encoding="utf-8") as f:
         logo = Fore.RED + f.read()

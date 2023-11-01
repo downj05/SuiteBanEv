@@ -15,6 +15,24 @@ def ts_to_str_ago(ts):
     return hr.date_time(dt.now() - dt.fromtimestamp(ts))
 
 
+def format_time(seconds):
+    if seconds < 0:
+        return "Invalid input (negative seconds)"
+
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    time_parts = []
+    if hours:
+        time_parts.append(f"{hours}h")
+    if minutes:
+        time_parts.append(f"{minutes}m")
+    if seconds or not (hours or minutes):
+        time_parts.append(f"{seconds}s")
+
+    return ''.join(time_parts)
+
+
 def duration_to_str(duration: int):
     # is a length of time in seconds, if its -1 its permanent
     if duration == -1:

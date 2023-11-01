@@ -6,7 +6,6 @@ from ip import get_public_ip
 from hwid2 import get_hwid
 from steam_client_accounts import get_latest_user_steam64
 
-
 DATABASE_FILE = "db.json"
 DATABASE_SCHEMA = {"data": [], "servers": {}}  # Schema for the database file
 
@@ -274,6 +273,12 @@ class Server:
 
     @staticmethod
     def server_handler(text: str, tuple: bool) -> str:
+        """
+        Returns the server address:port regardless of whether the input is a server name or address:port
+        If tuple is True, returns a tuple of (address: str, port: int) instead of a string.
+        :param text: server name or address:port
+        :param tuple: whether to return a tuple or a string
+        """
         # returns the server address:port regardless of whether the input is a server name or address:port
         # if tuple is True, returns a tuple instead of a string
         is_server = Server._is_server(text)
@@ -294,3 +299,5 @@ class Server:
 
     def __str__(self):
         return f"{Style.BRIGHT}{Fore.CYAN}{self.name}{Fore.BLACK}: {Fore.LIGHTBLUE_EX}({self.ip}:{self.port}){Style.RESET_ALL}"
+
+
