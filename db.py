@@ -2,7 +2,6 @@ import json
 from time import time as timestamp
 from time_helpers import ts_to_str, ts_to_str_ago
 from colorama import Fore, Back, Style
-from ip import get_public_ip
 from hwid2 import get_hwid
 from steam_client_accounts import get_latest_user_steam64
 
@@ -41,11 +40,13 @@ def check_ban_in_database(ip: str, hwid: list, steam64: str, server: str = None)
             for ban_hwid in hwid:
                 if ban_hwid in entry["hwid"]:
                     results["hwid"].append(
-                        (get_ban_status(entry, current_time)) + f" [{ban_hwid}]"
+                        (get_ban_status(entry, current_time)) +
+                        f" [{ban_hwid}]"
                     )
         if entry["steam64"] == steam64:
             results["steam"].append(
-                (get_ban_status(entry, current_time)) + f" [{entry['steam64']}]"
+                (get_ban_status(entry, current_time)) +
+                f" [{entry['steam64']}]"
             )
 
     # automatically add no bans msg if there are no bans
@@ -108,7 +109,8 @@ def update_database():
 def add_ban_to_database(ip, hwid, steam64, duration, server, time_added=None):
     create_database_if_not_exists()
     if time_added is None:
-        time_added = int(timestamp())  # Default to current time in Unix timestamp
+        # Default to current time in Unix timestamp
+        time_added = int(timestamp())
 
     with open(DATABASE_FILE, "r") as file:
         database = json.load(file)
@@ -299,5 +301,3 @@ class Server:
 
     def __str__(self):
         return f"{Style.BRIGHT}{Fore.CYAN}{self.name}{Fore.BLACK}: {Fore.LIGHTBLUE_EX}({self.ip}:{self.port}){Style.RESET_ALL}"
-
-

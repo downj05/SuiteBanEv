@@ -1,6 +1,5 @@
 import drive_helpers
 import os
-import subprocess
 import hashlib
 import uuid
 import winreg
@@ -123,6 +122,7 @@ def randomize_hwid() -> None:
         )
     else:
         print(Fore.RED + "Failed to spoof windows guid!" + Style.RESET_ALL)
+
 
 def random_sha1():
     return hashlib.sha1(uuid.uuid4().bytes)

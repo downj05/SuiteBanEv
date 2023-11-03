@@ -1,7 +1,7 @@
 import json
 from hwid2 import get_hwid, randomize_hwid
 from steam_client_accounts import get_latest_user_steam64
-from ip import get_public_ip
+from ip import IpManager
 from time_helpers import git_time_str_to_time_ago, duration_to_str
 import re
 import time
@@ -35,6 +35,9 @@ import command as cmd
 init(autoreset=True)
 current_version = get_current_version_info()
 selected_server = None
+
+
+ip_manager = IpManager()
 
 
 def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
@@ -84,7 +87,7 @@ def is_admin() -> bool:
 
 def new_ban(*args):
     global selected_server
-    ip = get_public_ip()
+    ip = ip_manager.get_public_ip()
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
     if len(args) > 0:
@@ -122,7 +125,7 @@ def new_ban(*args):
 def check(*args):
     global selected_server
 
-    ip = get_public_ip()
+    ip = ip_manager.get_public_ip()
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
 
