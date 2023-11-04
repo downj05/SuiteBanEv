@@ -353,6 +353,19 @@ if __name__ == "__main__":
             ),
         )
     )
+
+    headers.append(
+        ("",)
+    )  # empty line to seperate help info
+
+    headers.append(
+        (f"{Fore.GREEN}Type {Fore.YELLOW}help <page 1-{len(handler._help_pages)}>{Fore.GREEN} for a list of commands",)
+    )
+
+    headers.append(
+        (f"{Fore.GREEN}Or type {Fore.YELLOW}help <command>{Fore.GREEN} for help on a specific command",)
+    )
+
     ph.print_logo_with_info(logo, headers)
 
     while True:
