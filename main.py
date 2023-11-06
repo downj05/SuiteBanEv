@@ -168,11 +168,22 @@ def spoof():
 
 
 def poison_server(*args):
-    if args[0] == "-s":
-        address = Server.server_handler(args[1], tuple=True)
+    # Ignore unknown args so an arbitrary amount of text can be passed
+    parser = cmd.ArgumentHandler(ignore_unknown_args=True)
+    parser.register('-s')
+
+    cmd_args = parser.parse(*args)
+
+    if cmd_args.s:
+        address = Server.server_handler(cmd_args.s, tuple=True)
         poison.poison_server(address)
     else:
         [print(poison.convert_name(" ".join(args)))]
+    # if args[0] == "-s":
+    #     address = Server.server_handler(args[1], tuple=True)
+    #     poison.poison_server(address)
+    # else:
+    #     [print(poison.convert_name(" ".join(args)))]
 
 
 def bind_kill(key="f11"):

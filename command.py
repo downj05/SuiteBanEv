@@ -132,10 +132,11 @@ class ArgumentHandler:
     STORE_VALUE = "store_value"
     VALUE_TYPES = ['str', 'int', 'float']
 
-    def __init__(self):
+    def __init__(self, ignore_unknown_args=False):
         print('init arg handler')
         self._arguments = []
         self._parsed = ParsedArguments()
+        self._ignore_unknown_args = ignore_unknown_args
 
     def register(self, name: str, value_type='str', default=None, action=STORE_VALUE):
         print(
@@ -181,6 +182,8 @@ class ArgumentHandler:
             return self._arguments[self._arguments.index([arg for arg in self._arguments if arg['name'] == name][0])]
         except ValueError:
             return None
+        except IndexError:
+            return None
 
     def verify_arg_value(self, arg: dict, value: str):
         """
@@ -199,14 +202,17 @@ class ArgumentHandler:
         else:
             return value
 
-    def handle_arg(self, arg: str, value: str = None):
+    def handle_arg(self, arg_name: str, value: str = None):
         # verify the arg exists, if it does, store the value
         # if not a store action, verify the value provided by the user is valid
-        print(f'handling arg {arg} with value {value}')
-        arg = self.get_arg_from_name(arg)
-        if not arg:
-            raise ValueError(f"argument does not exist: '{arg}'")
-        print(f'resolved to arg: {arg}')
+        print(f'handling arg {arg_name} with value {value}')
+        arg = self.get_arg_from_name(arg_name)
+        if not arg and not self._ignore_unknown_args:
+            raise ValueError(f"argument does not exist: '{arg_name}'")
+        elif not arg and self._ignore_unknown_args:
+            print(f'ignoring unknown arg {arg_name}')
+            return
+        print(f"resolved '{arg_name}' to: {arg}")
         # Store actions use defaults for their logic
         if arg['action'] == self.STORE_TRUE or arg['action'] == self.STORE_FALSE:
             print('\tstore action')
