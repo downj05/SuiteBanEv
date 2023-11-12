@@ -1,59 +1,8 @@
-import random
 from colorama import Fore, Back, Style
 import argparse
-from steamwebapi.api import ISteamUser, IPlayerService, ISteamUserStats
 import a2s
-import requests
-import json
-
-
-parser = argparse.ArgumentParser(
-    prog="cyrillic",
-    description="Poison text with cyrillic characters for schemes",
-    epilog="Have fun scheming!",
-)
-
-parser.add_argument(
-    "-t", "--text", type=str, help="poison the supplied string with cyrillics"
-)
-parser.add_argument(
-    "-ht",
-    "--highlight-text",
-    type=str,
-    help="highlight cyrillic characters inside text",
-)
-parser.add_argument(
-    "-p",
-    "--players",
-    action="store_true",
-    help="pull all the players from a Steam server and poision their names",
-)
-parser.add_argument(
-    "-a",
-    "--address",
-    type=str,
-    default="play.unlimitedrp.cc:27015",
-    help="address of the Steam server for extracting player names, in format IP:port",
-)
-
-parser.add_argument(
-    "-u",
-    "--usernames",
-    action="store_true",
-    help="get random usernames from a pastebin link and poison them",
-)
-parser.add_argument(
-    "--usernames-link",
-    type=str,
-    default="https://pastebin.com/raw/MQeZjhrp",
-    help="link to get usernames from",
-)
-args = parser.parse_args()
-
-# Extract server address and port from command line arguments
-server_address, server_port = args.address.split(":")
-server_port = int(server_port)
-address = (server_address, server_port)
+import argparse
+import command
 
 n = 10
 char_map = {
@@ -94,29 +43,17 @@ def poison_server(address: tuple):
         print(convert_name(name))
 
 
-if __name__ == "__main__":
-    print(
-        Fore.LIGHTGREEN_EX
-        + "Cyrillic Text Poisoner "
-        + Fore.BLUE
-        + "v0.1"
-        + Style.RESET_ALL
-    )
-    print(
-        Fore.LIGHTGREEN_EX
-        + "Foreign characters will be highlighted in red.\n"
-        + Style.RESET_ALL
-    )
-
-    if args.text:
-        print(args.text)
-        print(convert_name(args.text))
-
-    if args.players:
+def poison_command(*args, parent):
+    # Ignore unknown args so an arbitrary amount of text can be passed
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+    parser.add_argument("text", nargs="*", help="text to poison")
+    parser.add_argument("-s", type=str, help="server address", default=None)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+    # Handle the server address as we do not need to use a saved server
+    if args.s:
+        address = server_handler.handle_address(args.s, tuple=True)
         poison_server(address)
-
-    if args.usernames:
-        # Get the usernames from the pastebin link
-        r = requests.get(args.usernames_link)
-        for name in r.text.split("\n"):
-            print(convert_name(name))
+    else:
+        [print(convert_name(" ".join(args.text)))]

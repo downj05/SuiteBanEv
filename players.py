@@ -31,9 +31,7 @@ def column_printer(matrix):
         print()  # make a new line
 
 
-def players(server):
-    server = Server.server_handler(server, tuple=True)
-
+def players(server: tuple):
     info = a2s.info(server)
     players = a2s.players(server)
     # Make header with relevant info

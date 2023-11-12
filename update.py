@@ -7,13 +7,6 @@ import requests
 import argparse
 from typing import Optional
 
-# toggle argument 'update'
-parser = argparse.ArgumentParser()
-parser.add_argument("--set", help="set the latest version info", action="store_true")
-parser.add_argument("--update", help="force an update", action="store_true")
-args = parser.parse_args()
-
-
 REPO_ZIP_URL = "https://github.com/downj05/SuiteBanEv/archive/refs/heads/main.zip"
 COMMITS_URL = "https://api.github.com/repos/downj05/SuiteBanEv/commits/main"
 
@@ -31,7 +24,8 @@ def get_latest_version_info() -> tuple:
             json_r["commit"]["author"]["date"],
         )
     else:
-        raise Exception(f"Failed to fetch latest version info: {response.content}")
+        raise Exception(
+            f"Failed to fetch latest version info: {response.content}")
 
 
 def set_latest_version_info():
@@ -102,7 +96,8 @@ def verbose_copy(source, target):
 # Function to replace the current script folder with the updated version
 def replace_current_folder(destination_folder, current_folder):
     # Move the contents of the new folder to the current folder
-    print(f"Replacing current folder from {destination_folder} to {current_folder}...")
+    print(
+        f"Replacing current folder from {destination_folder} to {current_folder}...")
     try:
         # Contents we need to move will be in the first subfolder of the destination folder
         # This is because the ZIP file contains a parent folder with the repo name
@@ -139,7 +134,7 @@ def replace_current_folder(destination_folder, current_folder):
 
 
 # Main function to perform the update process
-def update_script():
+def update_script(parent=None):
     if not compare_versions():
         print("No updates available.")
         i = input("Force update? (y/n): ")
@@ -183,6 +178,12 @@ def update_script():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--set", help="set the latest version info", action="store_true")
+    parser.add_argument("--update", help="force an update",
+                        action="store_true")
+    args = parser.parse_args()
     if args.set:
         set_latest_version_info()
         exit(0)

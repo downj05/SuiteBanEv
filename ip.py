@@ -20,7 +20,7 @@ class PublicIpAPI:
             if code == 200:
                 return ip
         except Exception as e:
-            print(f"[{self.name} IP] Error obtaining IP [{code}]: {e}")
+            print(f"[{self.name} IP] Error obtaining IP: {e}")
             return False
         finally:
             self.count += 1

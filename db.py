@@ -203,6 +203,8 @@ class Server:
 
     @staticmethod
     def from_name(name: str):
+        print('from name moment')
+        print(name, type(name))
         create_database_if_not_exists()
         with open(DATABASE_FILE, "r") as file:
             database = json.load(file)
@@ -225,7 +227,7 @@ class Server:
         return [Server._from_database(entry) for entry in database["servers"].values()]
 
     @staticmethod
-    def server(*args):
+    def server(*args, parent=None):
         """
         Usage: server add/remove/list
         server add <name> <address:port>

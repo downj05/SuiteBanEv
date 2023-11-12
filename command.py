@@ -1,4 +1,5 @@
 from colorama import init, Fore, Back, Style
+from db import Server
 import traceback
 
 
@@ -8,11 +9,12 @@ class Command:
     Stores the name, help, usage, and function of a command
     """
 
-    def __init__(self, name: str, func, help: str = "", usage: str = ""):
+    def __init__(self, name: str, func, help: str = "", usage: str = "", allow_exit: bool = False):
         self.name = name
         self.usage = usage
         self.help = help
         self.func = func
+        self.allow_exit = allow_exit
 
     def print_help(self, usage: bool = True):
         print(
@@ -21,6 +23,9 @@ class Command:
         # If usage is enabled, and there is a usage string, print it
         if self.usage not in ("", None) and usage:
             print(f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}Usage: {self.usage}")
+
+    def execute(self, *args):
+        self.func(*args, parent=self)
 
 
 class CommandHandler:
@@ -60,19 +65,24 @@ class CommandHandler:
             return False
         HELP_MSG = f"Do 'help {cmd.name}' for more info on this command"
         try:
-            cmd.func(*args)
+            cmd.execute(*args)
             return True
         # except TypeError:
         #     print(Fore.RED + Style.BRIGHT +
         #           "invalid arguments" + "\n" + HELP_MSG)
         #     return False
+        except SystemExit:
+            # From argparse
+            if cmd.allow_exit:
+                raise SystemExit
+            return False
         except Exception as e:
             print(Fore.RED + Style.BRIGHT +
                   f"Error: {str(e)}" + "\n" + HELP_MSG)
             traceback.print_exc()
             return False
 
-    def _help(self, arg: str = "help"):
+    def _help(self, arg: str = "help", parent=None):
         """
         Takes in 1 argument, either a command name or a page number
         If the argument is a command name, show the help for that command
@@ -112,201 +122,103 @@ class CommandHandler:
         cmd.print_help()
 
 
-class ParsedArguments:
+class SelectedServerHandler:
     """
-    Parsed arguments object, used to store parsed arguments
+    Class for handling the selected server
+    _instance is made False so that the __new__ method will run
+    __new__ will only run once, so the instance will be saved
+    __new__ sets the instance's selected_server to None
     """
+    _instance = False
 
     def __init__(self):
-        self._added_args = []
-        pass
-
-
-class ArgumentHandler:
-    """
-    Handler for arguments used in commands
-    Lets you register arguments for a command, and parse arguments
-    """
-    STORE_TRUE = "store_true"
-    STORE_FALSE = "store_false"
-    STORE_VALUE = "store_value"
-    VALUE_TYPES = ['str', 'int', 'float']
-
-    def __init__(self, ignore_unknown_args=False):
-        print('init arg handler')
-        self._arguments = []
-        self._parsed = ParsedArguments()
-        self._ignore_unknown_args = ignore_unknown_args
-
-    def register(self, name: str, value_type='str', default=None, action=STORE_VALUE):
-        print(
-            f'attempting to register arg {name} with value type {value_type} and default {default} and action {action}')
-        if not name.startswith("-"):
-            # positional argument
-            arg_type = 'positional'
-            # positional arguments cannot have a store action
-            if action == self.STORE_TRUE or action == self.STORE_FALSE:
-                raise ValueError(
-                    f"cannot have a store action for positional argument '{name}'")
-        else:
-            # flag argument
-            arg_type = 'flag'
-            name = name[1:]
-
-        if value_type not in self.VALUE_TYPES:
-            raise ValueError(f"invalid type '{type}'")
-        if action not in (self.STORE_TRUE, self.STORE_FALSE, self.STORE_VALUE):
-            raise ValueError(f"invalid action '{action}'")
-
-        if action == self.STORE_TRUE or action == self.STORE_FALSE:
-            if default:
-                raise ValueError(
-                    f"cannot have a default value for action '{action}'")
-            default = True if action == self.STORE_TRUE else False
-
-        arg = {
-            "name": name,
-            "type": arg_type,
-            "value_type": value_type,
-            "default": default,
-            "action": action,
-        }
-
-        self._arguments.append(arg)
-
-        print(
-            f'registered arg {name}:\n{self.get_arg_from_name(name)}')
-
-    def get_arg_from_name(self, name: str):
-        try:
-            return self._arguments[self._arguments.index([arg for arg in self._arguments if arg['name'] == name][0])]
-        except ValueError:
-            return None
-        except IndexError:
-            return None
-
-    def verify_arg_value(self, arg: dict, value: str):
         """
-        Only used for non-store actions
+        This will only run once, when the instance is created
         """
-        if arg['value_type'] == 'int':
-            try:
-                return int(value)
-            except ValueError:
-                return False
-        elif arg['value_type'] == 'float':
-            try:
-                return float(value)
-            except ValueError:
-                return False
+        print("init")
+
+    def __new__(cls) -> "SelectedServerHandler":
+        if cls._instance is False:
+            print("creating first instance!")
+            cls._instance = super(SelectedServerHandler, cls).__new__(cls)
+            print(f"{cls._instance} -> None")
+            cls._instance.selected_server = None
+        print("new object, selected server:",
+              str(cls._instance.selected_server))
+        return cls._instance
+
+    # Set the selected server from a string
+    def set_selected_server(self, server: str):
+        """
+        Set the selected server from a string/server instance
+        """
+        if isinstance(server, Server):
+            print("setting selected server to", server)
+            self.selected_server = server
         else:
-            return value
+            print("setting selected server to", server)
+            self.selected_server = Server.from_name(server)
 
-    def handle_arg(self, arg_name: str, value: str = None):
-        # verify the arg exists, if it does, store the value
-        # if not a store action, verify the value provided by the user is valid
-        print(f'handling arg {arg_name} with value {value}')
-        arg = self.get_arg_from_name(arg_name)
-        if not arg and not self._ignore_unknown_args:
-            raise ValueError(f"argument does not exist: '{arg_name}'")
-        elif not arg and self._ignore_unknown_args:
-            print(f'ignoring unknown arg {arg_name}')
-            return
-        print(f"resolved '{arg_name}' to: {arg}")
-        # Store actions use defaults for their logic
-        if arg['action'] == self.STORE_TRUE or arg['action'] == self.STORE_FALSE:
-            print('\tstore action')
-            if value:
-                raise ValueError(f"argument '{arg}' does not take a value")
-            self.store_parsed(arg)
-            return
+    # Deset the selected server
+    def deselect_server(self):
+        print("deselecting server")
+        self.selected_server = None
 
-        # If the value is None, and the action is not a store action, store the default value
-        if not value:
-            print('\tno value provided for non store action')
-            self.store_parsed(arg)
-            return
+    # Get the selected server
+    def get_selected_server(self) -> Server:
+        return self.selected_server
 
-        # Verify the value is valid
-        value = self.verify_arg_value(arg, value)
-        if not value:
-            raise ValueError(f"invalid value '{value}' for argument '{arg}'")
+    # 2 types of handle input, handle input that only works with saved servers, and handle input that can use any address provided
+    # The one that works with saved servers will be used for commands like "check" and "new" as we need to associate bans with a server we have saved
+    # The one that works with any address will be used for commands like "players" and "poison" as we don't need have a saved server to use them
 
-        # Store the parsed argument
-        arg['value'] = value
-        self.store_parsed(arg)
+    # Handle input that only works with saved servers
+    def handle_saved(self, input_str: str = None, tuple=False) -> Server:
+        """
+        Handle input for commands that only work with saved servers
+        Assume that the input is a server name, if there is no input, return the selected server
+        If there is no selected server, raise an error
+        :param input_str: the input string
+        :return: the server
+        """
+        if input_str is None or input_str == '':
+            if self.selected_server is None:
+                raise ValueError("No server selected")
+            else:
+                server = self.selected_server
+        elif isinstance(input_str, str):
+            server = Server.from_name(input_str)
+        elif isinstance(input_str, list):
+            server = Server.from_name(input_str[0])
+        if tuple:
+            return server.ip, server.port
+        else:
+            return server
 
-    def store_parsed(self, arg: dict):
-        print(f'storing parsed arg {arg}')
-        self._parsed.__dict__[arg['name']] = arg.get('value', arg['default'])
-        print(
-            f'stored parsed arg {arg} with value {arg.get("value", arg["default"])}')
-        self._parsed._added_args.append(arg['name'])
-        print(
-            f'added arg {arg["name"]} to added args, total {len(self._parsed._added_args)}')
-
-    def set_parsed_none(self):
-        # set to none if not added so we can check if it was added
-        for arg in self._arguments:
-            print(f"checking if arg {arg} was added")
-            if arg['name'] not in self._parsed._added_args:
-                print(f"\targ {arg} was not added")
-                self._parsed.__dict__[arg['name']] = None
-
-    def parse(self, *args) -> ParsedArguments:
-        # args will be a list of strings
-        # arguments are passed like -a value
-
-        for i, arg in enumerate(args):
-            print("parsing arg", arg)
-            if arg.startswith("-"):  # handle flag argument
-                print("\tflag arg")
-                arg = arg[1:]
-                # check if the next argument is a value
-                val = args[i + 1] if i + 1 < len(args) else None
-                if val and not val.startswith("-"):
-                    print("\t\tvalue provided with arg")
-                    self.handle_arg(arg, val)
-                else:
-                    print("\t\tno value provided with arg")
-                    self.handle_arg(arg)
-            else:  # handle positional argument
-                # if the previous argument was a flag, skip this argument
-                if args[i - 1].startswith("-"):
-                    continue
-
-                self.handle_arg(arg)
-        # set any args that weren't added to none so that accessing them doesn't throw an error
-        self.set_parsed_none()
-
-        return self._parsed
+    def handle_address(self, input_str: str | list[str] = None, tuple: bool = False) -> str | tuple:
+        """
+        Handle input for commands that can use server address or server names
+        Also allow for no input, in which case return the selected server (run handle_saved)
+        :param input_str: the input string
+        :param tuple: whether to return a tuple or the address as a string
+        :return: the server address
+        """
+        if input_str is None or input_str == '':
+            return self.handle_saved(input_str=input_str, tuple=tuple)
+        elif isinstance(input_str, str):
+            return Server.server_handler(input_str, tuple=tuple)
+        elif isinstance(input_str, list):
+            return Server.server_handler(input_str[0], tuple=tuple)
 
 
-if __name__ == '__main__':
-    def test_cmd(*args):
-        parser = ArgumentHandler()
-        parser.register('-a', value_type='int',
-                        action=ArgumentHandler.STORE_VALUE)
-        parser.register('-b', value_type='float',
-                        action=ArgumentHandler.STORE_VALUE)
-        parser.register('-c', action=ArgumentHandler.STORE_TRUE)
+if __name__ == "__main__":
+    a = SelectedServerHandler()
+    b = SelectedServerHandler()
+    print(a is b)
 
-        args = parser.parse(*args)
+    a.set_selected_server("panda")
 
-        print(args.__dict__)
-        if args.a:
-            print(f"a: {args.a}")
-        if args.b:
-            print(f"b: {args.b}")
-        if args.c:
-            print(f"c: {args.c}")
-
-    cmd_handler = CommandHandler()
-    cmd_handler.register(Command('test', test_cmd,
-                                 help='test command', usage='test <args>'))
-    cmd_handler.handleInput('test -a 1 -b 2.5 ')
-    cmd_handler.handleInput('test -a 1 -b 2.5')
-    cmd_handler.handleInput('test -a 1')
-    cmd_handler.handleInput('test -b 2.5')
-    cmd_handler.handleInput('test -c')
-    cmd_handler.handleInput('test')
+    print(a.selected_server)
+    print(b.selected_server)
+    c = SelectedServerHandler()
+    print(c.selected_server)

@@ -1,4 +1,4 @@
-import json
+import argparse
 from hwid2 import get_hwid, randomize_hwid
 from steam_client_accounts import get_latest_user_steam64
 from ip import IpManager
@@ -29,7 +29,7 @@ from update import (
     get_latest_version_info,
 )
 import print_helpers as ph
-import command as cmd
+import command
 
 
 init(autoreset=True)
@@ -38,6 +38,16 @@ selected_server = None
 
 
 ip_manager = IpManager()
+
+parser = argparse.ArgumentParser(prog='Smuggler Suite')
+parser.add_argument('--ignore-ssl', action='store_true', default=False,)
+args = parser.parse_args()
+
+if args.ignore_ssl:
+    import urllib3
+    # ignore ssl cert errors
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    urllib3.disable_warnings(urllib3.exceptions.SSLError)
 
 
 def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
@@ -85,7 +95,7 @@ def is_admin() -> bool:
         return False
 
 
-def new_ban(*args):
+def new_ban(*args, parent=None):
     global selected_server
     ip = ip_manager.get_public_ip()
     hwid = get_hwid()
@@ -122,7 +132,7 @@ def new_ban(*args):
     )
 
 
-def check(*args):
+def check(*args, parent=None):
     global selected_server
 
     ip = ip_manager.get_public_ip()
@@ -155,7 +165,7 @@ def check(*args):
                 print("├─ " + entry)
 
 
-def spoof():
+def spoof(parent=None):
     c = input(
         Fore.LIGHTCYAN_EX
         + "Are you sure you want to spoof your hwid? (y/n):"
@@ -167,59 +177,49 @@ def spoof():
         print("Cancelled.")
 
 
-def poison_server(*args):
-    # Ignore unknown args so an arbitrary amount of text can be passed
-    parser = cmd.ArgumentHandler(ignore_unknown_args=True)
-    parser.register('-s')
-
-    cmd_args = parser.parse(*args)
-
-    if cmd_args.s:
-        address = Server.server_handler(cmd_args.s, tuple=True)
-        poison.poison_server(address)
-    else:
-        [print(poison.convert_name(" ".join(args)))]
-    # if args[0] == "-s":
-    #     address = Server.server_handler(args[1], tuple=True)
-    #     poison.poison_server(address)
-    # else:
-    #     [print(poison.convert_name(" ".join(args)))]
+def exit_program(parent=None):
+    sys.exit(0)
 
 
-def bind_kill(key="f11"):
+def bind_kill(key="f11", parent=None):
     try:
         kill_bind.toggle_bind(key)
     except Exception as e:
         print(Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}")
 
 
-def select_cmd(*args):
-    global selected_server
-    if len(args) < 1:
-        if selected_server is not None:
-            print(f"{Fore.YELLOW}Unselected server {str(selected_server)}")
-            selected_server = None
+def select_cmd(*args, parent):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+    parser.add_argument('server', nargs='?', type=str, default=None)
+    args = parser.parse_args(args)
+    select_handler = command.SelectedServerHandler()
+    if args.server is None:
+        if select_handler.get_selected_server() is not None:
+            print(
+                f"{Fore.YELLOW}Unselected server {str(select_handler.get_selected_server())}"
+            )
+            select_handler.deselect_server()
             return
         else:
             raise Exception("No server provided")
             return
 
-    server_name = args[0]
-    server = Server.from_name(server_name)
-    selected_server = server
+    server = select_handler.handle_saved(args.server)
+    select_handler.set_selected_server(server)
     print(f"{Fore.GREEN}Selected server {str(server)}")
     return
 
 
-def player_list(*args):
-    global selected_server
+def player_cmd(*args, parent):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
 
-    if len(args) < 1:
-        assert isinstance(
-            selected_server, Server), "No server selected or provided"
-        server = selected_server.name
-    else:
-        server = args[0]
+    parser.add_argument('server', nargs='?', type=str,
+                        default=None)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+    server = server_handler.handle_address(args.server, tuple=True)
     players(server)
 
 
@@ -250,19 +250,19 @@ if __name__ == "__main__":
     update_database()
 
     # init commands
-    handler = cmd.CommandHandler()
+    handler = command.CommandHandler()
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "check",
             check,
             help="check if your ip/hwid/steam64 are in a logged ban on a server\nwill check the currently selected server if no argument is provided",
             usage="check <server>/all\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck all",
         )
     )
-    handler.register(command=cmd.Command(
+    handler.register(command=command.Command(
         "spoof", spoof, help="randomize your hwid"))
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "new",
             new_ban,
             help="record a new ban, length will be prompted upon running, server must be selected or provided",
@@ -270,15 +270,15 @@ if __name__ == "__main__":
         )
     )
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "poison",
-            poison_server,
+            poison.poison_command,
             help="poison given text with russian characters, can also retrieve poisoned playernames from an unturned server",
             usage="poison <text> or poison -s <address:port>",
         )
     )
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "bind",
             bind_kill,
             help="toggle a bind key to kill unturned, <key> is f11 by default",
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "server",
             Server.server,
             help="use an alias for a servers details, compatible with all commands that take an address:port",
@@ -296,11 +296,12 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=cmd.Command("update", update_script, help="update the program")
+        command=command.Command("update", update_script,
+                                help="update the program")
     )
 
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "select",
             select_cmd,
             help="select a server for use when recording/checking bans",
@@ -309,7 +310,7 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "swinger",
             swinger,
             help="Automatically swing your weapon via left or right click",
@@ -318,16 +319,16 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=cmd.Command(
+        command=command.Command(
             "players",
-            player_list,
+            player_cmd,
             help="Prints out a list of players on a server",
             usage="players <server>/<none (selected server)>",
         )
     )
 
-    handler.register(command=cmd.Command(
-        "quit", exit, help="exit the program"))
+    handler.register(command=command.Command(
+        "quit", exit_program, help="exit the program", allow_exit=True))
 
     with open(random.choice(("banner.txt", "banner2.txt")), "r", encoding="utf-8") as f:
         logo = Fore.RED + f.read()
