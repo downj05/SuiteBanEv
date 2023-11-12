@@ -40,13 +40,11 @@ def check_ban_in_database(ip: str, hwid: list, steam64: str, server: str = None)
             for ban_hwid in hwid:
                 if ban_hwid in entry["hwid"]:
                     results["hwid"].append(
-                        (get_ban_status(entry, current_time)) +
-                        f" [{ban_hwid}]"
+                        (get_ban_status(entry, current_time)) + f" [{ban_hwid}]"
                     )
         if entry["steam64"] == steam64:
             results["steam"].append(
-                (get_ban_status(entry, current_time)) +
-                f" [{entry['steam64']}]"
+                (get_ban_status(entry, current_time)) + f" [{entry['steam64']}]"
             )
 
     # automatically add no bans msg if there are no bans
@@ -203,8 +201,6 @@ class Server:
 
     @staticmethod
     def from_name(name: str):
-        print('from name moment')
-        print(name, type(name))
         create_database_if_not_exists()
         with open(DATABASE_FILE, "r") as file:
             database = json.load(file)
