@@ -9,6 +9,7 @@ def print_logo_with_info(
     logo: str,
     headers: list[tuple],
     padding_min=12,
+    padding_offset=2,
     header_start=4,
     header_color=Fore.WHITE,
     logo_color=Fore.RED,
@@ -17,7 +18,10 @@ def print_logo_with_info(
     headers = headers.copy()
 
     # Calculate the padding needed for the information section
-    padding = max(padding_min, max(len(header[0]) for header in headers))
+    # Ignore headers with only 1 element as these arent in the standard header: info format
+    # As this is the case, we dont want the side of header to contribute to the padding
+    padding = max(padding_min, max(len(header[0])
+                  for header in headers if len(header) > 1)) + padding_offset
 
     # Add empty headers to the start of the list
     [headers.insert(0, ("",)) for _ in range(header_start)]

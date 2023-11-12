@@ -13,7 +13,7 @@ import poison
 import ctypes
 import kill_bind
 import random
-from swinger import swinger
+from macros import swinger, wiggle
 from players import players
 from db import (
     update_database,
@@ -320,6 +320,11 @@ if __name__ == "__main__":
 
     handler.register(
         command=command.Command(
+            "wiggle", wiggle, help="Automatically lean to break out of handcuffs/cable ties", usage="wiggle -d <delay> -kt <key time> -t <type>\nDefaults: delay=0.38, key time=0.05, type=inf (cuffs, handcuffs, cable, cabletie, inf, infinite)")
+    )
+
+    handler.register(
+        command=command.Command(
             "players",
             player_cmd,
             help="Prints out a list of players on a server",
@@ -334,8 +339,10 @@ if __name__ == "__main__":
         logo = Fore.RED + f.read()
 
     name = f"{Fore.RED}Smuggler{Fore.WHITE}Suite"
+    # Count number of characters in title for printing line break
     name_len = 0
     for c in name:
+        # Only count letters, ignore ascii escape codes etc
         if c.isalpha():
             name_len += 1
 
