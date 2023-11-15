@@ -14,7 +14,7 @@ import ctypes
 import kill_bind
 import random
 from macros import swinger, wiggle
-from players import players
+from players import players, player_monitor_cmd
 from db import (
     update_database,
     add_ban_to_database,
@@ -329,6 +329,15 @@ if __name__ == "__main__":
             player_cmd,
             help="Prints out a list of players on a server",
             usage="players <server>/<none (selected server)>",
+        )
+    )
+
+    handler.register(
+        command=command.Command(
+            "monitor",
+            player_monitor_cmd,
+            help="Announce when players join/leave a server",
+            usage="monitor <server>/<none (selected server)>",
         )
     )
 
