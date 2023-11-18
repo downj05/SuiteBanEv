@@ -96,18 +96,19 @@ def is_admin() -> bool:
 
 
 def new_ban(*args, parent=None):
-    global selected_server
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+
+    parser.add_argument('server', nargs='?', type=str,
+                        default=None)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+    server = server_handler.handle_saved(args.server)
+    server_name = server.name
+
     ip = ip_manager.get_public_ip()
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
-    if len(args) > 0:
-        server = Server.from_name(args[0])
-        server_name = server.name
-    else:
-        assert isinstance(
-            selected_server, Server), "No server selected or provided"
-        server = selected_server
-        server_name = selected_server.name
     while True:
         i = input(
             f"{Fore.RED}Duration (e.g. 120s, 5m, 8h, 3d, 6w, 2M, 2y, perm): {Fore.YELLOW}"
@@ -133,27 +134,27 @@ def new_ban(*args, parent=None):
 
 
 def check(*args, parent=None):
-    global selected_server
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+
+    parser.add_argument('server', nargs='?', type=str,
+                        default=None)
+    parser.add_argument('-a', '--all', action='store_true', default=False)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
 
     ip = ip_manager.get_public_ip()
     hwid = get_hwid()
     steam64 = get_latest_user_steam64()
 
-    if len(args) == 0:
-        assert isinstance(
-            selected_server, Server), "No server selected or provided"
+    if args.all:
+        print(ph.h1("All servers"))
+        ban_results = check_ban_in_database(ip, hwid, steam64)
+    else:
+        server = server_handler.handle_saved(args.server)
+        print("checking", ph.h1(server.name))
         ban_results = check_ban_in_database(
-            ip, hwid, steam64, server=selected_server.name
-        )
-
-    # if at least 1 arg and first arg is all, do all
-    elif args[0] == "all":
-        ban_results = check_ban_in_database(ip, hwid, steam64, server=None)
-
-    # server name is argument
-    elif args[0]:
-        ban_results = check_ban_in_database(
-            ip, hwid, steam64, server=Server.from_name(args[0]).name
+            ip, hwid, steam64, server=server.name
         )
 
     for field, status in ban_results.items():
@@ -256,7 +257,7 @@ if __name__ == "__main__":
             "check",
             check,
             help="check if your ip/hwid/steam64 are in a logged ban on a server\nwill check the currently selected server if no argument is provided",
-            usage="check <server>/all\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck all",
+            usage="check <server>/<-a --all>\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck -a\tcheck --all",
         )
     )
     handler.register(command=command.Command(

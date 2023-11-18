@@ -13,6 +13,7 @@ class PublicIpAPI:
     get_method = None
     count = 0
     timeout = 3
+    ssl = True
 
     def get_ip(self):
         try:
@@ -33,6 +34,11 @@ class PublicIp:
     def register_api(self, api: PublicIpAPI):
         self.api_list.append(api)
 
+    @staticmethod
+    def generic_get_method(url, timeout):
+        r = requests.get(url, timeout=timeout, verify=PublicIpAPI.ssl)
+        return r
+
     def get_public_ip(self) -> str:
         while True:
             counts = [api.count for api in self.api_list]
@@ -50,7 +56,7 @@ class Ipify(PublicIpAPI):
     url = "https://api.ipify.org"
 
     def get_method(self):
-        r = requests.get(self.url, timeout=self.timeout)
+        r = PublicIp.generic_get_method(self.url, self.timeout)
         return r.text, r.status_code
 
 
@@ -59,7 +65,7 @@ class BigData(PublicIpAPI):
     url = "https://api.bigdatacloud.net/data/client-ip"
 
     def get_method(self):
-        r = requests.get(self.url, timeout=self.timeout)
+        r = PublicIp.generic_get_method(self.url, self.timeout)
         return r.json().get('ipString'), r.status_code
 
 
@@ -68,7 +74,7 @@ class SeeIP(PublicIpAPI):
     url = "https://api.seeip.org/jsonip?"
 
     def get_method(self):
-        r = requests.get(self.url, timeout=self.timeout)
+        r = PublicIp.generic_get_method(self.url, self.timeout)
         return r.json().get('ip'), r.status_code
 
 

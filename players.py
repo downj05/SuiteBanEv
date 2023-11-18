@@ -7,6 +7,7 @@ import print_helpers as ph
 from colorama import Fore, Back, Style
 from datetime import datetime as dt
 import time_helpers as th
+from toasts import player_joined, player_left
 
 player_monitor_thread_running = False
 
@@ -58,9 +59,13 @@ def player_monitor_thread(polling_interval=10):
                 for player in new_players:
                     ph.print_respect_cli(
                         f"{player} {Fore.LIGHTGREEN_EX}joined")
+                    player_joined(
+                        player_monitor_thread_running['server'], player)
             if left_players:
                 for player in left_players:
                     ph.print_respect_cli(f"{player} {Fore.LIGHTRED_EX}left")
+                    player_left(
+                        player_monitor_thread_running['server'], player)
 
             previous_players = players.copy()
         time.sleep(1/tps)
