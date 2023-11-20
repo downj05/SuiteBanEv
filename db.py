@@ -1,9 +1,15 @@
 import json
 from time import time as timestamp
-from time_helpers import ts_to_str, ts_to_str_ago
+from time_helpers import ts_to_str, ts_to_str_ago, parse_duration, duration_to_str
 from colorama import Fore, Back, Style
 from hwid2 import get_hwid
 from steam_client_accounts import get_latest_user_steam64
+from ip import IpManager
+import time
+import command
+import argparse
+import print_helpers as ph
+
 
 DATABASE_FILE = "db.json"
 DATABASE_SCHEMA = {"data": [], "servers": {}}  # Schema for the database file
@@ -40,11 +46,13 @@ def check_ban_in_database(ip: str, hwid: list, steam64: str, server: str = None)
             for ban_hwid in hwid:
                 if ban_hwid in entry["hwid"]:
                     results["hwid"].append(
-                        (get_ban_status(entry, current_time)) + f" [{ban_hwid}]"
+                        (get_ban_status(entry, current_time)) +
+                        f" [{ban_hwid}]"
                     )
         if entry["steam64"] == steam64:
             results["steam"].append(
-                (get_ban_status(entry, current_time)) + f" [{entry['steam64']}]"
+                (get_ban_status(entry, current_time)) +
+                f" [{entry['steam64']}]"
             )
 
     # automatically add no bans msg if there are no bans
@@ -166,6 +174,80 @@ def ban_count_in_database(server: str = None) -> int:
 def no_ban_status(r: list, val):
     if len(r) == 0:
         r.append(Fore.LIGHTGREEN_EX + Style.BRIGHT + f"no bans! [{val}]")
+
+
+ip_manager = IpManager()
+
+
+def new_ban_cmd(*args, parent=None):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+
+    parser.add_argument('server', nargs='?', type=str,
+                        default=None)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+    server = server_handler.handle_saved(args.server)
+    server_name = server.name
+
+    ip = ip_manager.get_public_ip()
+    hwid = get_hwid()
+    steam64 = get_latest_user_steam64()
+    while True:
+        i = input(
+            f"{Fore.RED}Duration (e.g. 120s, 5m, 8h, 3d, 6w, 2M, 2y, perm): {Fore.YELLOW}"
+        )
+        try:
+            duration = parse_duration(i)
+            break
+        except ValueError as e:
+            print(f"Invalid duration: {str(e)}")
+
+    time_added = int(time.time())
+    add_ban_to_database(
+        ip=ip,
+        hwid=hwid,
+        steam64=steam64,
+        duration=duration,
+        time_added=time_added,
+        server=server_name,
+    )
+    print(
+        f"{Fore.GREEN}{Style.BRIGHT}Added ban of length {Fore.MAGENTA}{duration_to_str(duration)}{Fore.GREEN} to database on the server {str(server)}"
+    )
+
+
+def check_cmd(*args, parent=None):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+
+    parser.add_argument('server', nargs='?', type=str,
+                        default=None)
+    parser.add_argument('-a', '--all', action='store_true', default=False)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+
+    ip = ip_manager.get_public_ip()
+    hwid = get_hwid()
+    steam64 = get_latest_user_steam64()
+
+    if args.all:
+        print(ph.h1("All servers"))
+        ban_results = check_ban_in_database(ip, hwid, steam64)
+    else:
+        server = server_handler.handle_saved(args.server)
+        print("checking", ph.h1(server.name))
+        ban_results = check_ban_in_database(
+            ip, hwid, steam64, server=server.name
+        )
+
+    for field, status in ban_results.items():
+        ph.h1(field)
+        for i, entry in enumerate(status):
+            if i == len(status) - 1:
+                print("└─ " + entry)
+            else:
+                print("├─ " + entry)
 
 
 class Server:

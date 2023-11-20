@@ -1,6 +1,38 @@
 from datetime import datetime as dt
 import datetime
 import human_readable as hr
+import re
+
+
+def parse_duration(duration_str):
+    if duration_str.lower() == "perm":
+        return -1
+    else:
+        # Use regular expressions to extract numeric values and units
+        matches = re.findall(r"(\d+)([sdhwmMy])", duration_str)
+        seconds = 0
+
+        for match in matches:
+            value, unit = match
+            value = int(value)
+            if unit == "s":
+                seconds += value
+            elif unit == "m":
+                seconds += value * 60
+            elif unit == "h":
+                seconds += value * 3600
+            elif unit == "d":
+                seconds += value * 86400
+            elif unit == "w":
+                seconds += value * 604800
+            elif unit == "M":
+                seconds += value * 2592000  # Assuming 30 days in a month
+            elif unit == "y":
+                seconds += value * 31536000  # Assuming 365 days in a year
+            else:
+                raise ValueError(f"Invalid unit: {unit}")
+
+        return seconds
 
 
 def ts_to_str(ts):

@@ -21,6 +21,8 @@ from db import (
     check_ban_in_database,
     ban_count_in_database,
     Server,
+    check_cmd,
+    new_ban_cmd
 )
 from update import (
     compare_versions,
@@ -28,6 +30,9 @@ from update import (
     get_current_version_info,
     get_latest_version_info,
 )
+
+from usernames import username_cmd, UsernameGenerator
+
 import print_helpers as ph
 import command
 
@@ -57,113 +62,11 @@ def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
         time.sleep(delay)
 
 
-def parse_duration(duration_str):
-    if duration_str.lower() == "perm":
-        return -1
-    else:
-        # Use regular expressions to extract numeric values and units
-        matches = re.findall(r"(\d+)([sdhwmMy])", duration_str)
-        seconds = 0
-
-        for match in matches:
-            value, unit = match
-            value = int(value)
-            if unit == "s":
-                seconds += value
-            elif unit == "m":
-                seconds += value * 60
-            elif unit == "h":
-                seconds += value * 3600
-            elif unit == "d":
-                seconds += value * 86400
-            elif unit == "w":
-                seconds += value * 604800
-            elif unit == "M":
-                seconds += value * 2592000  # Assuming 30 days in a month
-            elif unit == "y":
-                seconds += value * 31536000  # Assuming 365 days in a year
-            else:
-                raise ValueError(f"Invalid unit: {unit}")
-
-        return seconds
-
-
 def is_admin() -> bool:
     try:
         return ctypes.windll.shell32.IsUserAnAdmin() == 1
     except AttributeError:
         return False
-
-
-def new_ban(*args, parent=None):
-    parser = argparse.ArgumentParser(
-        prog=parent.name, add_help=False, usage=parent.usage)
-
-    parser.add_argument('server', nargs='?', type=str,
-                        default=None)
-    args = parser.parse_args(args)
-    server_handler = command.SelectedServerHandler()
-    server = server_handler.handle_saved(args.server)
-    server_name = server.name
-
-    ip = ip_manager.get_public_ip()
-    hwid = get_hwid()
-    steam64 = get_latest_user_steam64()
-    while True:
-        i = input(
-            f"{Fore.RED}Duration (e.g. 120s, 5m, 8h, 3d, 6w, 2M, 2y, perm): {Fore.YELLOW}"
-        )
-        try:
-            duration = parse_duration(i)
-            break
-        except ValueError as e:
-            print(f"Invalid duration: {str(e)}")
-
-    time_added = int(time.time())
-    add_ban_to_database(
-        ip=ip,
-        hwid=hwid,
-        steam64=steam64,
-        duration=duration,
-        time_added=time_added,
-        server=server_name,
-    )
-    print(
-        f"{Fore.GREEN}{Style.BRIGHT}Added ban of length {Fore.MAGENTA}{duration_to_str(duration)}{Fore.GREEN} to database on the server {str(server)}"
-    )
-
-
-def check(*args, parent=None):
-    parser = argparse.ArgumentParser(
-        prog=parent.name, add_help=False, usage=parent.usage)
-
-    parser.add_argument('server', nargs='?', type=str,
-                        default=None)
-    parser.add_argument('-a', '--all', action='store_true', default=False)
-    args = parser.parse_args(args)
-    server_handler = command.SelectedServerHandler()
-
-    ip = ip_manager.get_public_ip()
-    hwid = get_hwid()
-    steam64 = get_latest_user_steam64()
-
-    if args.all:
-        print(ph.h1("All servers"))
-        ban_results = check_ban_in_database(ip, hwid, steam64)
-    else:
-        server = server_handler.handle_saved(args.server)
-        print("checking", ph.h1(server.name))
-        ban_results = check_ban_in_database(
-            ip, hwid, steam64, server=server.name
-        )
-
-    for field, status in ban_results.items():
-        ph.h1(field)
-        for i, entry in enumerate(status):
-            if i == len(status) - 1:
-                print("└─ " + entry)
-            else:
-                print("├─ " + entry)
 
 
 def spoof(parent=None):
@@ -255,7 +158,7 @@ if __name__ == "__main__":
     handler.register(
         command=command.Command(
             "check",
-            check,
+            check_cmd,
             help="check if your ip/hwid/steam64 are in a logged ban on a server\nwill check the currently selected server if no argument is provided",
             usage="check <server>/<-a --all>\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck -a\tcheck --all",
         )
@@ -265,7 +168,7 @@ if __name__ == "__main__":
     handler.register(
         command=command.Command(
             "new",
-            new_ban,
+            new_ban_cmd,
             help="record a new ban, length will be prompted upon running, server must be selected or provided",
             usage="new <server>",
         )
@@ -340,6 +243,12 @@ if __name__ == "__main__":
             help="Announce when players join/leave a server",
             usage="monitor <server>/<none (selected server)>",
         )
+    )
+
+    handler.register(
+        command=command.Command("username", username_cmd,
+                                help="Fetch random convincing usernames from a list of 666K Runescape usernames",
+                                usage='username <count (default 1)>')
     )
 
     handler.register(command=command.Command(
