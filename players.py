@@ -1,9 +1,15 @@
 import a2s
-from db import Server
+import argparse
+import time
+import command
+import threading
 import print_helpers as ph
 from colorama import Fore, Back, Style
 from datetime import datetime as dt
 import time_helpers as th
+from toasts import player_joined, player_left
+
+player_monitor_thread_running = False
 
 
 def player_pretty_print(player: a2s.Player):
@@ -11,6 +17,93 @@ def player_pretty_print(player: a2s.Player):
         f"{Fore.WHITE}{player.name}" +
         f" [{Fore.LIGHTGREEN_EX}{th.format_time(int(player.duration))}{Fore.WHITE}]"
     )
+
+
+def get_player_names(server, retries=3):
+    for i in range(retries):
+        try:
+            players = a2s.players(server)
+            break
+        except:
+            ph.print_respect_cli("Failed to get players, retrying... []")
+            time.sleep(3)
+    else:
+        raise RuntimeError("Failed to get players")
+    return [p.name for p in players]
+
+
+def player_monitor_thread(polling_interval=10):
+    global player_monitor_thread_running
+    previous_players = get_player_names(
+        player_monitor_thread_running['server'])
+
+    ph.print_respect_cli(
+        f"{Fore.CYAN}Player monitor started for {player_monitor_thread_running['name']}\n{Fore.WHITE}{Style.DIM}Run 'monitor' again to stop or 'monitor <server>' to monitor a different server")
+    tick = 0
+    tps = 20
+    # Increment tick every 1/tps seconds, when tick reaches polling interval*tps, check for new/left players etc, reset tick
+    while player_monitor_thread_running is not False and player_monitor_thread_running['running'] == True:
+        tick += 1
+        if tick >= polling_interval * tps:
+            tick = 0
+            players = get_player_names(player_monitor_thread_running["server"])
+
+            # get new players
+            new_players = [p for p in players if p not in previous_players]
+
+            # get players that left
+            left_players = [p for p in previous_players if p not in players]
+
+            # print new players
+            if new_players:
+                for player in new_players:
+                    ph.print_respect_cli(
+                        f"{player} {Fore.LIGHTGREEN_EX}joined")
+                    player_joined(
+                        player_monitor_thread_running['server'], player)
+            if left_players:
+                for player in left_players:
+                    ph.print_respect_cli(f"{player} {Fore.LIGHTRED_EX}left")
+                    player_left(
+                        player_monitor_thread_running['server'], player)
+
+            previous_players = players.copy()
+        time.sleep(1/tps)
+
+
+def player_monitor_cmd(*args, parent=None):
+    global player_monitor_thread_running
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+
+    parser.add_argument('server', nargs='?', type=str,
+                        default=None)
+    args = parser.parse_args(args)
+    # If the command is run while a monitor is running, disable that monitor
+    # If the user provides a server, enable a monitor for that server, regardless of if a current monitor needs to be disabled
+    if player_monitor_thread_running is not False:
+        # Disable player monitor
+        # Wait for thread to finish
+        player_monitor_thread_running['running'] = False
+        player_monitor_thread_running['thread'].join()
+        player_monitor_thread_running = False
+        print(f"{Fore.YELLOW}Player monitor stopped")
+        if args.server is None:
+            # No alternate server provided
+            return
+
+    # Continue to enable player monitor
+    server_handler = command.SelectedServerHandler()
+    server = server_handler.handle_address(args.server, tuple=True)
+    t = threading.Thread(target=player_monitor_thread, daemon=True)
+    player_monitor_thread_running = {
+        'server': server,
+        'name': a2s.info(server).server_name,
+        'thread': t,
+        'running': True
+    }
+
+    player_monitor_thread_running['thread'].start()
 
 
 def column_printer(matrix):
@@ -62,4 +155,4 @@ def players(server: tuple):
 
 
 if __name__ == '__main__':
-    players("mexico")
+    print(get_player_names(('198.244.176.107', 27015)))

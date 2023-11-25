@@ -14,13 +14,15 @@ import ctypes
 import kill_bind
 import random
 from macros import swinger, wiggle
-from players import players
+from players import players, player_monitor_cmd
 from db import (
     update_database,
     add_ban_to_database,
     check_ban_in_database,
     ban_count_in_database,
     Server,
+    check_cmd,
+    new_ban_cmd,
 )
 from update import (
     compare_versions,
@@ -28,6 +30,9 @@ from update import (
     get_current_version_info,
     get_latest_version_info,
 )
+
+from usernames import username_cmd, UsernameGenerator
+
 import print_helpers as ph
 import command
 
@@ -39,12 +44,17 @@ selected_server = None
 
 ip_manager = IpManager()
 
-parser = argparse.ArgumentParser(prog='Smuggler Suite')
-parser.add_argument('--ignore-ssl', action='store_true', default=False,)
+parser = argparse.ArgumentParser(prog="Smuggler Suite")
+parser.add_argument(
+    "--ignore-ssl",
+    action="store_true",
+    default=False,
+)
 args = parser.parse_args()
 
 if args.ignore_ssl:
     import urllib3
+
     # ignore ssl cert errors
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     urllib3.disable_warnings(urllib3.exceptions.SSLError)
@@ -57,112 +67,11 @@ def type_print(text, delay=0.1, color=Fore.WHITE, style=Style.NORMAL):
         time.sleep(delay)
 
 
-def parse_duration(duration_str):
-    if duration_str.lower() == "perm":
-        return -1
-    else:
-        # Use regular expressions to extract numeric values and units
-        matches = re.findall(r"(\d+)([sdhwmMy])", duration_str)
-        seconds = 0
-
-        for match in matches:
-            value, unit = match
-            value = int(value)
-            if unit == "s":
-                seconds += value
-            elif unit == "m":
-                seconds += value * 60
-            elif unit == "h":
-                seconds += value * 3600
-            elif unit == "d":
-                seconds += value * 86400
-            elif unit == "w":
-                seconds += value * 604800
-            elif unit == "M":
-                seconds += value * 2592000  # Assuming 30 days in a month
-            elif unit == "y":
-                seconds += value * 31536000  # Assuming 365 days in a year
-            else:
-                raise ValueError(f"Invalid unit: {unit}")
-
-        return seconds
-
-
 def is_admin() -> bool:
     try:
         return ctypes.windll.shell32.IsUserAnAdmin() == 1
     except AttributeError:
         return False
-
-
-def new_ban(*args, parent=None):
-    global selected_server
-    ip = ip_manager.get_public_ip()
-    hwid = get_hwid()
-    steam64 = get_latest_user_steam64()
-    if len(args) > 0:
-        server = Server.from_name(args[0])
-        server_name = server.name
-    else:
-        assert isinstance(
-            selected_server, Server), "No server selected or provided"
-        server = selected_server
-        server_name = selected_server.name
-    while True:
-        i = input(
-            f"{Fore.RED}Duration (e.g. 120s, 5m, 8h, 3d, 6w, 2M, 2y, perm): {Fore.YELLOW}"
-        )
-        try:
-            duration = parse_duration(i)
-            break
-        except ValueError as e:
-            print(f"Invalid duration: {str(e)}")
-
-    time_added = int(time.time())
-    add_ban_to_database(
-        ip=ip,
-        hwid=hwid,
-        steam64=steam64,
-        duration=duration,
-        time_added=time_added,
-        server=server_name,
-    )
-    print(
-        f"{Fore.GREEN}{Style.BRIGHT}Added ban of length {Fore.MAGENTA}{duration_to_str(duration)}{Fore.GREEN} to database on the server {str(server)}"
-    )
-
-
-def check(*args, parent=None):
-    global selected_server
-
-    ip = ip_manager.get_public_ip()
-    hwid = get_hwid()
-    steam64 = get_latest_user_steam64()
-
-    if len(args) == 0:
-        assert isinstance(
-            selected_server, Server), "No server selected or provided"
-        ban_results = check_ban_in_database(
-            ip, hwid, steam64, server=selected_server.name
-        )
-
-    # if at least 1 arg and first arg is all, do all
-    elif args[0] == "all":
-        ban_results = check_ban_in_database(ip, hwid, steam64, server=None)
-
-    # server name is argument
-    elif args[0]:
-        ban_results = check_ban_in_database(
-            ip, hwid, steam64, server=Server.from_name(args[0]).name
-        )
-
-    for field, status in ban_results.items():
-        ph.h1(field)
-        for i, entry in enumerate(status):
-            if i == len(status) - 1:
-                print("└─ " + entry)
-            else:
-                print("├─ " + entry)
 
 
 def spoof(parent=None):
@@ -190,8 +99,9 @@ def bind_kill(key="f11", parent=None):
 
 def select_cmd(*args, parent):
     parser = argparse.ArgumentParser(
-        prog=parent.name, add_help=False, usage=parent.usage)
-    parser.add_argument('server', nargs='?', type=str, default=None)
+        prog=parent.name, add_help=False, usage=parent.usage
+    )
+    parser.add_argument("server", nargs="?", type=str, default=None)
     args = parser.parse_args(args)
     select_handler = command.SelectedServerHandler()
     if args.server is None:
@@ -213,10 +123,10 @@ def select_cmd(*args, parent):
 
 def player_cmd(*args, parent):
     parser = argparse.ArgumentParser(
-        prog=parent.name, add_help=False, usage=parent.usage)
+        prog=parent.name, add_help=False, usage=parent.usage
+    )
 
-    parser.add_argument('server', nargs='?', type=str,
-                        default=None)
+    parser.add_argument("server", nargs="?", type=str, default=None)
     args = parser.parse_args(args)
     server_handler = command.SelectedServerHandler()
     server = server_handler.handle_address(args.server, tuple=True)
@@ -254,19 +164,20 @@ if __name__ == "__main__":
     handler.register(
         command=command.Command(
             "check",
-            check,
+            check_cmd,
             help="check if your ip/hwid/steam64 are in a logged ban on a server\nwill check the currently selected server if no argument is provided",
-            usage="check <server>/all\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck all",
+            usage="check <server>/<-a --all>\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck -a\tcheck --all",
         )
     )
-    handler.register(command=command.Command(
-        "spoof", spoof, help="randomize your hwid"))
+    handler.register(
+        command=command.Command("spoof", spoof, help="randomize your hwid")
+    )
     handler.register(
         command=command.Command(
             "new",
-            new_ban,
-            help="record a new ban, length will be prompted upon running, server must be selected or provided",
-            usage="new <server>",
+            new_ban_cmd,
+            help="record a new ban, length will be prompted upon running, server must be selected or provided\ncan optionally make an account only ban that excludes hwid and ip",
+            usage="new <server>\nnew -a <server>    (account only ban)",
         )
     )
     handler.register(
@@ -296,8 +207,7 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=command.Command("update", update_script,
-                                help="update the program")
+        command=command.Command("update", update_script, help="update the program")
     )
 
     handler.register(
@@ -320,7 +230,11 @@ if __name__ == "__main__":
 
     handler.register(
         command=command.Command(
-            "wiggle", wiggle, help="Automatically lean to break out of handcuffs/cable ties", usage="wiggle -d <delay> -kt <key time> -t <type>\nDefaults: delay=0.38, key time=0.05, type=inf (cuffs, handcuffs, cable, cabletie, inf, infinite)")
+            "wiggle",
+            wiggle,
+            help="Automatically lean to break out of handcuffs/cable ties",
+            usage="wiggle -d <delay> -kt <key time> -t <type>\nDefaults: delay=0.38, key time=0.05, type=inf (cuffs, handcuffs, cable, cabletie, inf, infinite)",
+        )
     )
 
     handler.register(
@@ -332,8 +246,29 @@ if __name__ == "__main__":
         )
     )
 
-    handler.register(command=command.Command(
-        "quit", exit_program, help="exit the program", allow_exit=True))
+    handler.register(
+        command=command.Command(
+            "monitor",
+            player_monitor_cmd,
+            help="Announce when players join/leave a server",
+            usage="monitor <server>/<none (selected server)>",
+        )
+    )
+
+    handler.register(
+        command=command.Command(
+            "username",
+            username_cmd,
+            help="Fetch random convincing usernames from a list of 666K Runescape usernames",
+            usage="username <count (default 1)>",
+        )
+    )
+
+    handler.register(
+        command=command.Command(
+            "quit", exit_program, help="exit the program", allow_exit=True
+        )
+    )
 
     with open(random.choice(("banner.txt", "banner2.txt")), "r", encoding="utf-8") as f:
         logo = Fore.RED + f.read()
@@ -373,16 +308,18 @@ if __name__ == "__main__":
         )
     )
 
-    headers.append(
-        ("",)
-    )  # empty line to seperate help info
+    headers.append(("",))  # empty line to seperate help info
 
     headers.append(
-        (f"{Fore.GREEN}Type {Fore.YELLOW}help <page 1-{len(handler._help_pages)}>{Fore.GREEN} for a list of commands",)
+        (
+            f"{Fore.GREEN}Type {Fore.YELLOW}help <page 1-{len(handler._help_pages)}>{Fore.GREEN} for a list of commands",
+        )
     )
 
     headers.append(
-        (f"{Fore.GREEN}Or type {Fore.YELLOW}help <command>{Fore.GREEN} for help on a specific command",)
+        (
+            f"{Fore.GREEN}Or type {Fore.YELLOW}help <command>{Fore.GREEN} for help on a specific command",
+        )
     )
 
     ph.print_logo_with_info(logo, headers)

@@ -1,9 +1,15 @@
 import json
 from time import time as timestamp
-from time_helpers import ts_to_str, ts_to_str_ago
+from time_helpers import ts_to_str, ts_to_str_ago, parse_duration, duration_to_str
 from colorama import Fore, Back, Style
 from hwid2 import get_hwid
 from steam_client_accounts import get_latest_user_steam64
+from ip import IpManager
+import time
+import command
+import argparse
+import print_helpers as ph
+
 
 DATABASE_FILE = "db.json"
 DATABASE_SCHEMA = {"data": [], "servers": {}}  # Schema for the database file
@@ -168,6 +174,98 @@ def no_ban_status(r: list, val):
         r.append(Fore.LIGHTGREEN_EX + Style.BRIGHT + f"no bans! [{val}]")
 
 
+ip_manager = IpManager()
+
+
+def new_ban_cmd(*args, parent=None):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage
+    )
+
+    parser.add_argument("server", nargs="?", type=str, default=None)
+
+    parser.add_argument("-a", "--account", action="store_true", default=False)
+
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+    server = server_handler.handle_saved(args.server)
+    server_name = server.name
+
+    if not args.account:
+        ip = ip_manager.get_public_ip()
+        hwid = get_hwid()
+    else:
+        print(f"{Fore.YELLOW}{Style.DIM}Account only ban! HWID and IP will be ignored!")
+        ip = None
+        hwid = None
+    steam64 = get_latest_user_steam64()
+    while True:
+        i = input(
+            f"{Fore.RED}Duration (e.g. 120s, 5m, 8h, 3d, 6w, 2M, 2y, perm): {Fore.YELLOW}"
+        )
+        try:
+            duration = parse_duration(i)
+            break
+        except ValueError as e:
+            print(f"Invalid duration: {str(e)}")
+
+    time_added = int(time.time())
+    add_ban_to_database(
+        ip=ip,
+        hwid=hwid,
+        steam64=steam64,
+        duration=duration,
+        time_added=time_added,
+        server=server_name,
+    )
+    print(
+        f"{Fore.GREEN}{Style.BRIGHT}Added ban of length {Fore.MAGENTA}{duration_to_str(duration)}{Fore.GREEN} to database on the server {str(server)}"
+    )
+
+
+def check_cmd(*args, parent=None):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage
+    )
+
+    parser.add_argument("server", nargs="?", type=str, default=None)
+    parser.add_argument("-a", "--all", action="store_true", default=False)
+    args = parser.parse_args(args)
+    server_handler = command.SelectedServerHandler()
+
+    ip = ip_manager.get_public_ip()
+    hwid = get_hwid()
+    steam64 = get_latest_user_steam64()
+
+    if args.all:
+        ban_results = check_ban_in_database(ip, hwid, steam64)
+    else:
+        server = server_handler.handle_saved(args.server)
+        ban_results = check_ban_in_database(ip, hwid, steam64, server=server.name)
+
+    max_status_len = 0
+    for _, s in ban_results.items():
+        for e in s:
+            if ph.visible_len(e) > max_status_len:
+                max_status_len = ph.visible_len(e)
+    max_status_len += 3
+
+    if args.all:
+        s = "All servers"
+    else:
+        s = server.name.capitalize()
+    ph.h1(s + (" " * (max_status_len - len(s))))
+    print()
+
+    for field, status in ban_results.items():
+        ph.h2(field)
+        for i, entry in enumerate(status):
+            if i == len(status) - 1:
+                print("└─ " + entry)
+            else:
+                print("├─ " + entry)
+
+
 class Server:
     def __init__(self, name: str, ip: str, port: int):
         self.name = name
@@ -299,3 +397,13 @@ class Server:
 
     def __str__(self):
         return f"{Style.BRIGHT}{Fore.CYAN}{self.name}{Fore.BLACK}: {Fore.LIGHTBLUE_EX}({self.ip}:{self.port}){Style.RESET_ALL}"
+
+
+if __name__ == "__main__":
+    c = command.Command(
+        "check",
+        check_cmd,
+        help="check if your ip/hwid/steam64 are in a logged ban on a server\nwill check the currently selected server if no argument is provided",
+        usage="check <server>/<-a --all>\n\nCheck on a specific server\ncheck <server>\n\nCheck against all servers\ncheck -a\tcheck --all",
+    )
+    c.execute("nylex")

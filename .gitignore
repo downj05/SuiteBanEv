@@ -4,6 +4,9 @@ db.json
 # Version cache
 version.json
 
+# Usernames
+usernames_666k.txt
+
 # Custom icons
 desktop.ini
 
