@@ -21,11 +21,14 @@ def set_player_prefs(val) -> bool:
 
 
 def get_player_prefs() -> str:
-    return drive_helpers.get_registry_value(
+    pref_val = drive_helpers.get_registry_value(
         winreg.HKEY_CURRENT_USER,
         r"Software\Smartly Dressed Games\Unturned",
         "CloudStorageHash_h1878083263",
     )
+    if isinstance(pref_val, bytes):
+        return pref_val.decode("utf-8")
+    return pref_val
 
 
 def set_convenient_save_data(val) -> bool:

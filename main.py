@@ -50,6 +50,9 @@ parser.add_argument(
     action="store_true",
     default=False,
 )
+
+parser.add_argument('-t', '--traceback', action='store_true', default=False, help='Print traceback on error')
+
 args = parser.parse_args()
 
 if args.ignore_ssl:
@@ -160,7 +163,7 @@ if __name__ == "__main__":
     update_database()
 
     # init commands
-    handler = command.CommandHandler()
+    handler = command.CommandHandler(args.traceback)
     handler.register(
         command=command.Command(
             "check",

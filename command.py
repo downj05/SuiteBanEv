@@ -37,7 +37,8 @@ class CommandHandler:
     Can have commands be registered, and can show help for commands, etc
     """
 
-    def __init__(self):
+    def __init__(self, traceback=False):
+        self.traceback = traceback
         self._commands = {}
         self.PAGE_SIZE = 5  # page size for help pages
         self._help_pages = []
@@ -81,7 +82,8 @@ class CommandHandler:
             return False
         except Exception as e:
             print(Fore.RED + Style.BRIGHT + f"Error: {str(e)}" + "\n" + HELP_MSG)
-            # traceback.print_exc()
+            if self.traceback:
+                traceback.print_exc()
             return False
 
     def _help(self, arg: str = "help", parent=None):
