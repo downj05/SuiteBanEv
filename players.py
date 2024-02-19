@@ -1,9 +1,10 @@
 import a2s
 import argparse
 import time
-import command
+from server import SelectedServerHandler
 import threading
 import print_helpers as ph
+from command import Command2
 from colorama import Fore, Back, Style
 from datetime import datetime as dt
 import time_helpers as th
@@ -12,7 +13,7 @@ from toasts import player_joined, player_left
 player_monitor_thread_running = False
 
 
-def player_pretty_print(player: a2s.Player):
+def print_player_info(player: a2s.Player):
     return (
         f"{Fore.WHITE}{player.name}" +
         f" [{Fore.LIGHTGREEN_EX}{th.format_time(int(player.duration))}{Fore.WHITE}]"
@@ -93,8 +94,8 @@ def player_monitor_cmd(*args, parent=None):
             return
 
     # Continue to enable player monitor
-    server_handler = command.SelectedServerHandler()
-    server = server_handler.handle_address(args.server, tuple=True)
+    server_handler = SelectedServerHandler()
+    server = server_handler.handle_address(args.server)
     t = threading.Thread(target=player_monitor_thread, daemon=True)
     player_monitor_thread_running = {
         'server': server,
@@ -124,7 +125,7 @@ def column_printer(matrix):
         print()  # make a new line
 
 
-def players(server: tuple):
+def print_player_list(server: tuple):
     info = a2s.info(server)
     players = a2s.players(server)
     # Make header with relevant info
@@ -144,7 +145,7 @@ def players(server: tuple):
     for i in range(0, len(players), COLUMNS):
         row = []
         for player in players[i:i+COLUMNS]:
-            row.append(player_pretty_print(player))
+            row.append(print_player_info(player))
         rows.append(row)
 
     # Print columns
@@ -153,6 +154,20 @@ def players(server: tuple):
         return
     column_printer(rows)
 
+class PlayerCmd(Command2):
+    name:str = "players"
+    usage:str = "players <server>\t\t- prints out a list of players on a server (saved server name or address:port)\nplayers <none>\t\t- prints out a list of players on the selected server"
+    help:str = "Prints out a list of players on a server"
+    def execute(self, *args):
+        parser = argparse.ArgumentParser(
+        prog=self.name, usage=self.name)
+        parser.add_argument("server", nargs="?", type=str, default=None)
+        args = parser.parse_args(args)
+        server_handler = SelectedServerHandler()
+        address, port = server_handler.handle_address(args.server)
+        server = (address, port)
+        print_player_list(server)
 
+    
 if __name__ == '__main__':
     print(get_player_names(('198.244.176.107', 27015)))

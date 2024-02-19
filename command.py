@@ -1,5 +1,4 @@
 from colorama import init, Fore, Back, Style
-from db import Server
 import traceback
 from typing import Union
 
@@ -18,6 +17,7 @@ class Command:
         self.help = help
         self.func = func
         self.allow_exit = allow_exit
+        print(f"command.Command: depcrecation warning for {name} - use Command2 instead")
 
     def print_help(self, usage: bool = True):
         print(
@@ -30,6 +30,30 @@ class Command:
     def execute(self, *args):
         self.func(*args, parent=self)
 
+class Command2:
+    """
+    Command object to be used with the CommandHandler
+    Stores the name, help, usage, and function of a command
+    """
+    name:str = None
+    usage:str = ""
+    help:str = ""
+    allow_exit:bool = False
+
+    def __init__(self):
+        if not self.name:
+            raise ValueError("Command2: name must be set")
+
+    def print_help(self, usage: bool = True):
+        print(
+            f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}{self.name}{Fore.BLACK} - {self.help}"
+        )
+        # If usage is enabled, and there is a usage string, print it
+        if self.usage not in ("", None) and usage:
+            print(f"{Fore.LIGHTYELLOW_EX}{Style.BRIGHT}Usage: {self.usage}")
+
+    def execute(self, *args):
+        print("Command2.execute: No command method has been assigned! This command doesn't do anyting!")
 
 class CommandHandler:
     """
@@ -126,98 +150,5 @@ class CommandHandler:
         cmd.print_help()
 
 
-class SelectedServerHandler:
-    """
-    Class for handling the selected server
-    _instance is made False so that the __new__ method will run
-    __new__ will only run once, so the instance will be saved
-    __new__ sets the instance's selected_server to None
-    """
-
-    _instance = False
-
-    def __init__(self):
-        """
-        This will only run once, when the instance is created
-        """
-
-    def __new__(cls) -> "SelectedServerHandler":
-        if cls._instance is False:
-            cls._instance = super(SelectedServerHandler, cls).__new__(cls)
-            cls._instance.selected_server = None
-        return cls._instance
-
-    # Set the selected server from a string
-    def set_selected_server(self, server: str):
-        """
-        Set the selected server from a string/server instance
-        """
-        if isinstance(server, Server):
-            self.selected_server = server
-        else:
-            self.selected_server = Server.from_name(server)
-
-    # Deset the selected server
-    def deselect_server(self):
-        self.selected_server = None
-
-    # Get the selected server
-    def get_selected_server(self) -> Server:
-        return self.selected_server
-
-    # 2 types of handle input, handle input that only works with saved servers, and handle input that can use any address provided
-    # The one that works with saved servers will be used for commands like "check" and "new" as we need to associate bans with a server we have saved
-    # The one that works with any address will be used for commands like "players" and "poison" as we don't need have a saved server to use them
-
-    # Handle input that only works with saved servers
-    def handle_saved(self, input_str: str = None, tuple=False) -> Server:
-        """
-        Handle input for commands that only work with saved servers
-        Assume that the input is a server name, if there is no input, return the selected server
-        If there is no selected server, raise an error
-        :param input_str: the input string
-        :return: the server
-        """
-        if input_str is None or input_str == "":
-            if self.selected_server is None:
-                raise ValueError("No server selected")
-            else:
-                server = self.selected_server
-        elif isinstance(input_str, str):
-            server = Server.from_name(input_str)
-        elif isinstance(input_str, list):
-            server = Server.from_name(input_str[0])
-        if tuple:
-            return server.ip, server.port
-        else:
-            return server
-
-    def handle_address(
-        self, input_str: Union[str, list[str]] = None, tuple: bool = False
-    ) -> Union[str, tuple]:
-        """
-        Handle input for commands that can use server address or server names
-        Also allow for no input, in which case return the selected server (run handle_saved)
-        :param input_str: the input string
-        :param tuple: whether to return a tuple or the address as a string
-        :return: the server address
-        """
-        if input_str is None or input_str == "":
-            return self.handle_saved(input_str=input_str, tuple=tuple)
-        elif isinstance(input_str, str):
-            return Server.server_handler(input_str, tuple=tuple)
-        elif isinstance(input_str, list):
-            return Server.server_handler(input_str[0], tuple=tuple)
-
-
 if __name__ == "__main__":
-    a = SelectedServerHandler()
-    b = SelectedServerHandler()
-    print(a is b)
-
-    a.set_selected_server("panda")
-
-    print(a.selected_server)
-    print(b.selected_server)
-    c = SelectedServerHandler()
-    print(c.selected_server)
+    pass

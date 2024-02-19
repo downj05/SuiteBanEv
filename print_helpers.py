@@ -37,7 +37,7 @@ def print_logo_with_info(
 
         # Prefix logo line with its colour
         line_logo = logo_color + line_logo
-        if header_info[0] == "":
+        if (len(header_info) == 1 and header_info[0] == ""):
             print(line_logo)
             continue
         header = header_info[0]
@@ -45,8 +45,14 @@ def print_logo_with_info(
 
         if len(header_info) > 1:
             values = header_info[1:]
+
+            # Dont put a ':' after the header if header is empty
+            colon = ":"
+            if header_info[0] == "":
+                colon = " "
+            
             print(
-                f"{line_logo}  {header_color}{header}:{padding_spaces}{Style.RESET_ALL}{', '.join([str(value) for value in values])}"
+                f"{line_logo}  {header_color}{header}{colon}{padding_spaces}{Style.RESET_ALL}{', '.join([str(value) for value in values])}"
             )
         else:
             print(f"{line_logo}  {header_color}{header}")

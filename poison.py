@@ -2,7 +2,7 @@ from colorama import Fore, Back, Style
 import argparse
 import a2s
 import argparse
-import command
+from server import SelectedServerHandler
 
 n = 10
 char_map = {
@@ -50,7 +50,7 @@ def poison_command(*args, parent):
     parser.add_argument("text", nargs="*", help="text to poison")
     parser.add_argument("-s", type=str, help="server address", default=None)
     args = parser.parse_args(args)
-    server_handler = command.SelectedServerHandler()
+    server_handler = SelectedServerHandler()
     # Handle the server address as we do not need to use a saved server
     if args.s:
         address = server_handler.handle_address(args.s, tuple=True)

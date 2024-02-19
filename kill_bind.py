@@ -1,17 +1,20 @@
 import keyboard
+import argparse
 import psutil
 import print_helpers
 from colorama import Fore, Style
 
 
+
+
 def kill_unturned():
-    print_helpers.print_respect_cli(
+    print(
         f"{Fore.BLACK}{Style.BRIGHT}Killing any Unturned processes{Fore.RESET}"
     )
     for p in psutil.process_iter():
         if "unturned" in p.name().lower():
             try:
-                print_helpers.print_respect_cli(
+                print(
                     f"{Fore.BLACK}{Style.BRIGHT}Killing {Fore.MAGENTA}{Style.NORMAL}{p.name()}{Fore.RESET}"
                 )
                 p.kill()
@@ -23,6 +26,14 @@ def kill_unturned():
 
 bind_enabled = False
 bind_keys = []
+
+def kill_cmd(*args, parent=None):
+    parser = argparse.ArgumentParser(
+        prog=parent.name, add_help=False, usage=parent.usage)
+
+    args = parser.parse_args(args)
+
+    kill_unturned()
 
 
 def toggle_bind(key: str):

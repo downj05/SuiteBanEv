@@ -2,6 +2,7 @@ import winreg
 import os
 import vdf
 from typing import Optional
+import subprocess
 
 UNTURNED_APP_ID = 304930
 
@@ -67,6 +68,17 @@ def get_unturned_path() -> str:
 
 def get_unturned_drive() -> Optional[str]:
     return get_unturned_library().split(":")[0].upper()
+
+
+def start_unturned(*args, parent=None):
+    unturned_path = get_unturned_path()
+    if not os.path.exists(unturned_path):
+        print(f"Error: Unturned not found at {unturned_path}")
+        print("This likely means Unturned is not installed on this machine, which is required to run this program!")
+        exit(1)
+    else:
+        # Run and pass args
+        subprocess.Popen([os.path.join(unturned_path, "Unturned_BE.exe")] + list(args))
 
 
 if __name__ == "__main__":

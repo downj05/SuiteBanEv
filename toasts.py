@@ -2,7 +2,6 @@ import requests
 import hashlib
 from urllib.parse import urlparse
 from os.path import splitext, join
-from db import Server
 import a2s
 from windows_toasts import Toast, WindowsToaster, ToastDisplayImage, InteractableWindowsToaster
 from windows_toasts.wrappers import ToastImagePosition

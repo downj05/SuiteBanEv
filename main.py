@@ -3,7 +3,7 @@ from hwid2 import get_hwid, randomize_hwid
 from steam_client_accounts import get_latest_user_steam64
 from ip import IpManager
 from time_helpers import git_time_str_to_time_ago, duration_to_str
-import re
+from db_provider import DatabaseCommand, SelectedDatabaseServerService
 import time
 import sys
 from colorama import init, Fore, Back, Style
@@ -14,22 +14,27 @@ import ctypes
 import kill_bind
 import random
 from macros import swinger, wiggle
-from players import players, player_monitor_cmd
-from db import (
+from players import PlayerCmd, player_monitor_cmd
+from ban_manager import (
     update_database,
-    add_ban_to_database,
-    check_ban_in_database,
     ban_count_in_database,
-    Server,
     check_cmd,
     new_ban_cmd,
 )
+
+from update import JSON2SQLMigrator
+
+import traceback
+
+from server import ServerListService, ServerCommand, SelectServerCommand
 from update import (
     compare_versions,
     update_script,
     get_current_version_info,
     get_latest_version_info,
 )
+
+from drive_helpers import start_unturned
 
 from usernames import username_cmd, UsernameGenerator
 
@@ -99,63 +104,26 @@ def bind_kill(key="f11", parent=None):
     except Exception as e:
         print(Fore.RED + Style.BRIGHT + f"Invalid bind {i[1]}: {str(e)}")
 
-
-def select_cmd(*args, parent):
-    parser = argparse.ArgumentParser(
-        prog=parent.name, add_help=False, usage=parent.usage
-    )
-    parser.add_argument("server", nargs="?", type=str, default=None)
-    args = parser.parse_args(args)
-    select_handler = command.SelectedServerHandler()
-    if args.server is None:
-        if select_handler.get_selected_server() is not None:
-            print(
-                f"{Fore.YELLOW}Unselected server {str(select_handler.get_selected_server())}"
-            )
-            select_handler.deselect_server()
-            return
-        else:
-            raise Exception("No server provided")
-            return
-
-    server = select_handler.handle_saved(args.server)
-    select_handler.set_selected_server(server)
-    print(f"{Fore.GREEN}Selected server {str(server)}")
-    return
-
-
-def player_cmd(*args, parent):
-    parser = argparse.ArgumentParser(
-        prog=parent.name, add_help=False, usage=parent.usage
-    )
-
-    parser.add_argument("server", nargs="?", type=str, default=None)
-    args = parser.parse_args(args)
-    server_handler = command.SelectedServerHandler()
-    server = server_handler.handle_address(args.server, tuple=True)
-    players(server)
-
-
 def version_string() -> str:
-    if current_version is None:
-        return f"{Fore.RED}{Style.DIM}Unknown"
-    else:
-        try:
-            update_info = get_latest_version_info()
+    try:
+        update_info = get_latest_version_info(check_every_second=300)
 
-            # If outdated
-            if compare_versions(update_info):
-                return [
-                    f"{Fore.YELLOW}{Style.DIM}{current_version[0][:7]}"
-                    + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New update {git_time_str_to_time_ago(update_info[2])} [{update_info[0][:7]}]",
-                    f"{Fore.LIGHTCYAN_EX}{update_info[1]}",
-                ]
+        # If outdated
+        if compare_versions(update_info):
+            return [
+                f"{Fore.YELLOW}{Style.DIM}{current_version[0][:7]}"
+                + f"{Style.BRIGHT}{Fore.LIGHTGREEN_EX} - New update {git_time_str_to_time_ago(update_info[2])} [{update_info[0][:7]}]",
+                f"{Fore.LIGHTCYAN_EX}{update_info[1]}",
+            ]
 
-            # If up to date
-            else:
-                return f"{Fore.GREEN}{Style.DIM}{current_version[0][:7]}{Fore.LIGHTGREEN_EX}{Style.NORMAL} - Up to date!"
-        except:
-            return Fore.RED + "Failed to fetch latest version info"
+        # If up to date
+        else:
+            return f"{Fore.GREEN}{Style.DIM}{current_version[0][:7]}{Fore.LIGHTGREEN_EX}{Style.NORMAL} - Up to date!"
+    except Exception as e:
+        if args.traceback:
+            print(Fore.RED + Style.BRIGHT + "Error fetching latest version info")
+            print(Fore.BLACK + Style.BRIGHT + traceback.format_exc())
+        return Fore.RED + "Failed to fetch latest version info"
 
 
 if __name__ == "__main__":
@@ -201,25 +169,17 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=command.Command(
-            "server",
-            Server.server,
-            help="use an alias for a servers details, compatible with all commands that take an address:port",
-            usage="server add/remove/list\n\nserver add <name> <address:port>\nserver remove <name>\nserver list",
-        )
+        command=ServerCommand()
     )
+
+    handler.register(command=DatabaseCommand())
 
     handler.register(
         command=command.Command("update", update_script, help="update the program")
     )
 
     handler.register(
-        command=command.Command(
-            "select",
-            select_cmd,
-            help="select a server for use when recording/checking bans",
-            usage="provide a server name to select it\nselect <name>\nleave blank to unselect the current server",
-        )
+        command=SelectServerCommand()
     )
 
     handler.register(
@@ -241,12 +201,7 @@ if __name__ == "__main__":
     )
 
     handler.register(
-        command=command.Command(
-            "players",
-            player_cmd,
-            help="Prints out a list of players on a server",
-            usage="players <server>/<none (selected server)>",
-        )
+        command=PlayerCmd()
     )
 
     handler.register(
@@ -266,6 +221,24 @@ if __name__ == "__main__":
             usage="username <count (default 1)>",
         )
     )
+
+    handler.register(JSON2SQLMigrator())
+
+    handler.register(
+        command=command.Command(
+            "start",
+            start_unturned,
+            help="Start unturned from the default steam library",
+        )
+    )
+
+
+    handler.register(
+        command=command.Command(
+        "kill", kill_bind.kill_cmd, help="kill/close unturned"
+        )
+    )
+
 
     handler.register(
         command=command.Command(
@@ -299,7 +272,17 @@ if __name__ == "__main__":
         spoofing = f"{Fore.RED}{Style.DIM}Disabled! - Please run as Administrator"
     headers.append(("HWID Spoofing", spoofing))
     headers.append((f"{len(handler._commands)} commands loaded",))
-    server_count = len(Server.get_all_servers())
+    db_string, db_status = SelectedDatabaseServerService.selected_str()
+    headers.append(("Database",db_string))  # empty line to seperate help info
+    # If no database selected
+    if not db_status:
+        headers.append(
+            (
+                "",f"{Fore.YELLOW}run db select <remote> to select a database",
+            )
+        )
+    serverListService = ServerListService()
+    server_count = len(serverListService.list_servers())
     ban_count = ban_count_in_database()
 
     headers.append(

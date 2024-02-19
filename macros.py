@@ -4,6 +4,7 @@ import mouse
 import argparse
 
 
+
 def swinger(*args, parent=None):
     """
     Swings players weapon automatically with configurable delay,

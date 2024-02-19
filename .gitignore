@@ -1,5 +1,6 @@
 # Ban Database
 db.json
+db.json.old
 
 # Version cache
 version.json
